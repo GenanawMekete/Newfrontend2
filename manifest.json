@@ -1,0 +1,75 @@
+{
+  "name": "Geeze Bingo",
+  "short_name": "Bingo",
+  "description": "Real-time multiplayer bingo game with 400 unique cards",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#4a6fa5",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/assets/icons/icon-72.png",
+      "sizes": "72x72",
+      "type": "image/png"
+    },
+    {
+      "src": "/assets/icons/icon-96.png",
+      "sizes": "96x96",
+      "type": "image/png"
+    },
+    {
+      "src": "/assets/icons/icon-128.png",
+      "sizes": "128x128",
+      "type": "image/png"
+    },
+    {
+      "src": "/assets/icons/icon-144.png",
+      "sizes": "144x144",
+      "type": "image/png"
+    },
+    {
+      "src": "/assets/icons/icon-152.png",
+      "sizes": "152x152",
+      "type": "image/png"
+    },
+    {
+      "src": "/assets/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/assets/icons/icon-384.png",
+      "sizes": "384x384",
+      "type": "image/png"
+    },
+    {
+      "src": "/assets/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "categories": ["entertainment", "games"],
+  "shortcuts": [
+    {
+      "name": "New Game",
+      "short_name": "Game",
+      "description": "Start a new bingo game",
+      "url": "/?action=new-game"
+    },
+    {
+      "name": "My Cards",
+      "short_name": "Cards",
+      "description": "View my bingo cards",
+      "url": "/?action=my-cards"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/assets/screenshots/gameplay.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide"
+    }
+  ]
+}
