@@ -1,45 +1,89 @@
-<div class="modal-overlay" id="winnerModal" style="display: none;">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3 class="modal-title">🎉 Bingo Winner! 🎉</h3>
-            <button class="modal-close">&times;</button>
+<div class="winner-modal-overlay" id="winnerModalOverlay">
+    <div class="winner-modal-content">
+        <div class="confetti-container" id="confettiContainer">
+            <!-- Confetti will be generated here -->
         </div>
-        <div class="modal-body">
-            <div class="winner-details">
-                <div class="winner-avatar-large">
-                    <img src="" alt="Winner" id="modalWinnerAvatar">
+        
+        <div class="winner-modal-header">
+            <div class="celebration-icon">🎉</div>
+            <h2 class="winner-modal-title">BINGO WINNER!</h2>
+            <div class="winner-subtitle">Congratulations!</div>
+        </div>
+        
+        <div class="winner-modal-body">
+            <div class="winner-info">
+                <div class="winner-avatar" id="winnerAvatar">
+                    <!-- Winner avatar/initials -->
                 </div>
-                <h4 id="modalWinnerName">Player Name</h4>
-                <p class="winner-message">Congratulations! You got Bingo!</p>
-                
-                <div class="winning-card-display">
-                    <h5>Winning Card: <span id="modalWinningCard">#1</span></h5>
-                    <div id="modalCardPattern"></div>
+                <div class="winner-details">
+                    <h3 id="winnerName">Player Name</h3>
+                    <div class="winner-card-info">
+                        <span class="info-label">Winning Card:</span>
+                        <span class="info-value" id="winningCardNumber">#1</span>
+                    </div>
+                    <div class="winner-pattern-info">
+                        <span class="info-label">Pattern:</span>
+                        <span class="info-value" id="winningPattern">Line</span>
+                    </div>
                 </div>
-                
-                <div class="winner-stats-grid">
+            </div>
+            
+            <div class="winning-card-preview" id="winningCardPreview">
+                <!-- Winning card preview will be displayed here -->
+            </div>
+            
+            <div class="winning-numbers">
+                <h4>Winning Numbers</h4>
+                <div class="numbers-list" id="winningNumbersList">
+                    <!-- Winning numbers will be listed here -->
+                </div>
+            </div>
+            
+            <div class="game-statistics">
+                <h4>Game Statistics</h4>
+                <div class="stats-grid">
                     <div class="stat-item">
-                        <span class="stat-label">Numbers Called</span>
-                        <span class="stat-value" id="modalNumbersCalled">0</span>
+                        <div class="stat-label">Game Duration</div>
+                        <div class="stat-value" id="gameDuration">00:00</div>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-label">Game Time</span>
-                        <span class="stat-value" id="modalGameTime">0:00</span>
+                        <div class="stat-label">Numbers Called</div>
+                        <div class="stat-value" id="totalNumbersCalled">0</div>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-label">Prize</span>
-                        <span class="stat-value">🏆</span>
+                        <div class="stat-label">Total Players</div>
+                        <div class="stat-value" id="totalPlayers">1</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Your Score</div>
+                        <div class="stat-value" id="playerScore">1000</div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="modal-footer">
-            <button id="modalShareBtn" class="btn btn-primary">
-                <span class="icon">📤</span> Share Victory
-            </button>
-            <button id="modalPlayAgainBtn" class="btn btn-success">
-                <span class="icon">🔄</span> Play Again
-            </button>
+        
+        <div class="winner-modal-footer">
+            <div class="share-section">
+                <button class="btn btn-secondary" id="shareResult">
+                    <span class="btn-icon">📤</span> Share
+                </button>
+                <button class="btn btn-secondary" id="saveResult">
+                    <span class="btn-icon">💾</span> Save
+                </button>
+            </div>
+            <div class="action-section">
+                <button class="btn btn-primary" id="playAgain">
+                    <span class="btn-icon">🔄</span> Play Again
+                </button>
+                <button class="btn" id="closeWinnerModal">
+                    <span class="btn-icon">🏠</span> Main Menu
+                </button>
+            </div>
         </div>
     </div>
 </div>
+
+<script>
+// Winner modal specific JavaScript
+// This would be integrated with the main app.js
+</script>
