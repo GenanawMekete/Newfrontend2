@@ -3,127 +3,109 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#4a6fa5">
-    <title>Telegram Bingo</title>
+    <title>Telegram Bingo Game</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/components.css">
-    <link rel="stylesheet" href="css/animations.css">
     <link rel="stylesheet" href="css/responsive.css">
+    <link rel="stylesheet" href="css/animations.css">
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" href="assets/icons/favicon.ico">
+    <link rel="icon" href="assets/icons/favicon.ico" type="image/x-icon">
+    <meta name="theme-color" content="#0088cc">
 </head>
 <body>
     <div class="app-container">
         <!-- Header -->
         <header class="app-header">
-            <div class="logo-container">
-                <img src="assets/images/logo.png" alt="Bingo Logo" class="logo">
-                <h1>Telegram Bingo</h1>
-            </div>
-            <div class="game-info">
-                <div class="players-count">
-                    <span class="icon">👥</span>
-                    <span id="playersCount">1</span>
-                </div>
-                <div class="timer" id="gameTimer">00:30</div>
+            <div class="header-content">
+                <img src="assets/images/logo.png" alt="Bingo Logo" class="logo" id="logo">
+                <h1 class="app-title" id="appTitle">Bingo Game</h1>
+                <div class="user-info" id="userInfo"></div>
             </div>
         </header>
 
-        <!-- Main Content Area -->
+        <!-- Main Content -->
         <main class="main-content">
-            <!-- Card Selection Screen (Initial State) -->
-            <section id="cardSelectionScreen" class="screen active">
-                <div class="screen-header">
-                    <h2>Select Your Bingo Cards</h2>
-                    <p class="subtitle">Choose up to <span id="maxCards">4</span> cards. Time left: <span id="selectionTimer">30</span>s</p>
+            <!-- Card Selection Section -->
+            <section class="card-selection-section" id="cardSelectionSection">
+                <div class="section-header">
+                    <h2>Select Your Card</h2>
+                    <p>Choose from 1-400 available cards</p>
+                    <div class="selection-stats">
+                        <span id="selectedCount">0</span> selected
+                    </div>
                 </div>
-                <div class="cards-container" id="cardsContainer">
-                    <!-- Cards will be generated here -->
+                
+                <div class="search-bar">
+                    <input type="text" id="cardSearch" placeholder="Search card number..." class="search-input">
+                    <button class="clear-search" id="clearSearch">×</button>
                 </div>
+                
+                <div class="cards-grid-container">
+                    <div class="cards-grid" id="cardsGrid">
+                        <!-- Cards 1-400 will be generated here -->
+                    </div>
+                </div>
+                
                 <div class="selection-controls">
-                    <button id="confirmSelection" class="btn btn-primary" disabled>Confirm Selection (0/4)</button>
+                    <button class="btn btn-secondary" id="clearSelection">Clear Selection</button>
+                    <button class="btn btn-primary" id="confirmSelection">Confirm Selection</button>
                 </div>
             </section>
 
-            <!-- Game Board Screen -->
-            <section id="gameScreen" class="screen">
-                <div class="screen-header">
-                    <h2>Bingo Game</h2>
-                    <p class="subtitle">Last number: <span id="lastNumber">--</span></p>
-                </div>
-                
-                <!-- Number Grid -->
-                <div id="numberGridContainer"></div>
-                
-                <!-- Player Cards -->
-                <div class="player-cards-container">
-                    <h3>Your Cards</h3>
-                    <div id="playerCardsContainer"></div>
-                </div>
-                
-                <!-- Game Controls -->
-                <div class="game-controls">
-                    <button id="bingoBtn" class="btn btn-success" disabled>BINGO!</button>
-                    <button id="autoMarkBtn" class="btn btn-secondary">Auto-Mark: ON</button>
-                </div>
-            </section>
-            
-            <!-- Winner Screen -->
-            <section id="winnerScreen" class="screen">
-                <div class="winner-content">
-                    <h2 class="winner-title">🎉 BINGO! 🎉</h2>
-                    <div class="winner-info">
-                        <div class="winner-avatar">
-                            <img src="" alt="Winner" id="winnerAvatar">
-                        </div>
-                        <h3 id="winnerName">Player Name</h3>
-                        <p>has won the game!</p>
-                    </div>
-                    <div class="winner-stats">
-                        <p>Winning card: <span id="winningCard">#1</span></p>
-                        <p>Numbers called: <span id="numbersCalled">0</span></p>
-                        <p>Time: <span id="gameDuration">0:00</span></p>
-                    </div>
-                    <div class="restart-timer">
-                        <p>Next game in: <span id="restartTimer">10</span>s</p>
-                    </div>
-                </div>
+            <!-- Game Board Section (Hidden Initially) -->
+            <section class="game-board-section" id="gameBoardSection" style="display: none;">
+                <!-- Game board will be loaded here -->
             </section>
         </main>
 
-        <!-- Mobile Navigation -->
-        <div id="mobileNavContainer"></div>
-        
-        <!-- Winner Modal -->
-        <div id="winnerModalContainer"></div>
-
-        <!-- Audio Elements -->
-        <audio id="bingoSound" preload="auto">
-            <source src="assets/sounds/bingo.mp3" type="audio/mpeg">
-        </audio>
-        <audio id="cardSelectSound" preload="auto">
-            <source src="assets/sounds/card-select.mp3" type="audio/mpeg">
-        </audio>
-        <audio id="numberDrawnSound" preload="auto">
-            <source src="assets/sounds/number-drawn.mp3" type="audio/mpeg">
-        </audio>
-        <audio id="winSound" preload="auto">
-            <source src="assets/sounds/win.mp3" type="audio/mpeg">
-        </audio>
-        <audio id="buttonClickSound" preload="auto">
-            <source src="assets/sounds/button-click.mp3" type="audio/mpeg">
-        </audio>
+        <!-- Footer -->
+        <footer class="app-footer">
+            <div class="footer-content">
+                <div class="game-stats">
+                    <div class="stat">
+                        <span class="stat-label">Cards:</span>
+                        <span class="stat-value" id="totalCards">0</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Selected:</span>
+                        <span class="stat-value" id="activeCards">0</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Numbers:</span>
+                        <span class="stat-value" id="numbersCalled">0</span>
+                    </div>
+                </div>
+                <div class="footer-actions">
+                    <button class="btn btn-small" id="toggleSound">
+                        <span class="sound-icon">🔊</span>
+                    </button>
+                    <button class="btn btn-small" id="toggleTheme">
+                        <span class="theme-icon">🌙</span>
+                    </button>
+                </div>
+            </div>
+        </footer>
     </div>
 
-    <!-- Load Components -->
-    <script type="module" src="js/config.js"></script>
+    <!-- Modals and Overlays -->
+    <div class="modal-overlay" id="cardPreviewModal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Card <span id="previewCardNumber">1</span></h3>
+                <button class="modal-close" id="closePreview">&times;</button>
+            </div>
+            <div class="modal-body" id="cardPreviewContent">
+                <!-- Card preview will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="closePreviewBtn">Close</button>
+                <button class="btn btn-primary" id="selectPreviewCard">Select This Card</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include Web Components -->
     <script type="module" src="js/app.js"></script>
-    <script type="module" src="js/socket-manager.js"></script>
-    <script type="module" src="js/game-engine.js"></script>
-    <script type="module" src="js/card-manager.js"></script>
-    <script type="module" src="js/ui-manager.js"></script>
-    <script type="module" src="js/audio-manager.js"></script>
-    <script type="module" src="js/offline-manager.js"></script>
     
     <!-- Telegram Web App SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
