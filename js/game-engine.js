@@ -1,185 +1,447 @@
-import { CONFIG, BINGO_COLUMNS } from './config.js';
+// Game Engine - Core game logic
+import { CONFIG, CARD_RULES } from './config.js';
 
 export class GameEngine {
-    constructor(app) {
-        this.app = app;
-        this.selectionTimer = null;
-        this.gameTimer = null;
-        this.numberDrawInterval = null;
-        this.drawnNumbers = new Set();
-        this.gameStartTime = null;
-        this.autoMarkEnabled = true;
+    constructor() {
+        this.state = {
+            gameId: null,
+            selectedCards: [],
+            calledNumbers: new Set(),
+            calledNumbersHistory: [],
+            currentNumber: null,
+            gameStarted: false,
+            gameEnded: false,
+            winners: [],
+            patterns: [],
+            players: [],
+            startTime: null,
+            lastNumberTime: null
+        };
+        
+        this.cardsData = new Map();
+        this.winningPatterns = new Set();
+        this.numberFrequency = new Map();
     }
     
-    startSelectionTimer(seconds) {
-        let timeLeft = seconds;
+    // Initialize game with selected cards
+    async init(selectedCards) {
+        this.state.selectedCards = selectedCards;
+        this.state.gameId = this.generateGameId();
+        this.state.startTime = Date.now();
         
-        this.selectionTimer = setInterval(() => {
-            timeLeft--;
-            this.app.uiManager.updateSelectionTimer(timeLeft);
+        // Load card data for all selected cards
+        await this.loadCardsData(selectedCards);
+        
+        // Initialize number frequency tracking
+        this.initializeNumberFrequency();
+        
+        // Initialize winning patterns
+        this.initializeWinningPatterns();
+        
+        console.log(`Game initialized with ${selectedCards.length} cards`);
+    }
+    
+    // Generate unique game ID
+    generateGameId() {
+        return `game_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    }
+    
+    // Load data for all selected cards
+    async loadCardsData(cardNumbers) {
+        // This would typically fetch from server
+        // For now, we'll generate mock data
+        
+        cardNumbers.forEach(cardNumber => {
+            const cardData = this.generateCardData(cardNumber);
+            this.cardsData.set(cardNumber, cardData);
+        });
+    }
+    
+    // Generate card data (mock implementation)
+    generateCardData(cardNumber) {
+        const seed = cardNumber * 123456789;
+        const card = {
+            cardNumber,
+            numbers: [],
+            markedNumbers: new Set(),
+            patternsCompleted: new Set()
+        };
+        
+        // Generate BINGO numbers
+        CARD_RULES.COLUMNS.forEach((letter, colIndex) => {
+            const columnRules = CARD_RULES[`${letter}_COLUMN`];
             
-            if (timeLeft <= 0) {
-                clearInterval(this.selectionTimer);
-                this.endSelectionPeriod();
+            for (let row = 0; row < 5; row++) {
+                // Free space in the middle
+                if (CARD_RULES.FREE_SPACE && 
+                    row === CARD_RULES.FREE_SPACE_POSITION[0] && 
+                    colIndex === CARD_RULES.FREE_SPACE_POSITION[1]) {
+                    card.numbers.push({
+                        letter,
+                        number: 'FREE',
+                        row,
+                        column: colIndex,
+                        isFreeSpace: true,
+                        isMarked: true // Free space is always marked
+                    });
+                    continue;
+                }
+                
+                // Generate number
+                const number = this.generateColumnNumber(seed, cardNumber, colIndex, row, columnRules);
+                
+                card.numbers.push({
+                    letter,
+                    number,
+                    row,
+                    column: colIndex,
+                    isFreeSpace: false,
+                    isMarked: false
+                });
             }
-        }, 1000);
+        });
+        
+        return card;
     }
     
-    endSelectionPeriod() {
-        if (this.app.selectedCards.length === 0) {
-            // Auto-select random cards if none selected
-            const cards = this.app.cardManager.getAvailableCards();
-            const randomCards = cards.slice(0, CONFIG.MAX_CARDS_PER_PLAYER);
-            this.app.selectedCards = randomCards.map(card => card.id);
-            this.app.cardManager.updateSelectionDisplay();
+    // Generate column number (consistent with card-manager)
+    generateColumnNumber(seed, cardNumber, columnIndex, rowIndex, columnRules) {
+        const base = seed + (cardNumber * 100) + (columnIndex * 10) + rowIndex;
+        const range = columnRules.max - columnRules.min + 1;
+        return columnRules.min + (Math.abs(base) % range);
+    }
+    
+    // Initialize number frequency tracking
+    initializeNumberFrequency() {
+        // Count frequency of each number across all cards
+        for (const cardData of this.cardsData.values()) {
+            cardData.numbers.forEach(cell => {
+                if (cell.number !== 'FREE') {
+                    const current = this.numberFrequency.get(cell.number) || 0;
+                    this.numberFrequency.set(cell.number, current + 1);
+                }
+            });
         }
-        
-        this.app.confirmCardSelection();
     }
     
-    startGame(gameData) {
-        this.gameStartTime = Date.now();
-        this.drawnNumbers.clear();
-        
-        // Start number drawing interval
-        this.numberDrawInterval = setInterval(() => {
-            this.drawNumber();
-        }, CONFIG.NUMBER_DRAW_INTERVAL);
-        
-        // Update game timer every second
-        this.gameTimer = setInterval(() => {
-            this.updateGameTimer();
-        }, 1000);
-        
-        this.app.uiManager.showBingoButton(true);
+    // Initialize winning patterns
+    initializeWinningPatterns() {
+        this.winningPatterns = new Set(CONFIG.BINGO_PATTERNS);
     }
     
-    drawNumber() {
-        if (this.drawnNumbers.size >= CONFIG.BINGO_NUMBERS) {
-            clearInterval(this.numberDrawInterval);
+    // Start the game
+    startGame() {
+        if (this.state.gameStarted) {
+            console.warn('Game already started');
             return;
         }
         
-        let number;
+        this.state.gameStarted = true;
+        this.state.startTime = Date.now();
+        
+        console.log('Game started:', this.state.gameId);
+        return this.state.gameId;
+    }
+    
+    // Draw a new number
+    drawNumber() {
+        if (!this.state.gameStarted || this.state.gameEnded) {
+            return null;
+        }
+        
+        // Generate random number 1-75
+        let newNumber;
+        let attempts = 0;
+        const maxAttempts = 100;
+        
         do {
-            number = Math.floor(Math.random() * CONFIG.BINGO_NUMBERS) + 1;
-        } while (this.drawnNumbers.has(number));
+            newNumber = Math.floor(Math.random() * 75) + 1;
+            attempts++;
+            
+            if (attempts > maxAttempts) {
+                // All numbers drawn
+                this.endGame();
+                return null;
+            }
+        } while (this.state.calledNumbers.has(newNumber));
         
-        this.drawnNumbers.add(number);
+        // Update state
+        this.state.calledNumbers.add(newNumber);
+        this.state.currentNumber = newNumber;
+        this.state.lastNumberTime = Date.now();
         
-        // Send to server (in real implementation)
-        this.app.socketManager.send({
-            type: 'number_drawn',
-            number: number
+        const letter = this.getNumberLetter(newNumber);
+        const numberData = {
+            number: newNumber,
+            letter,
+            timestamp: this.state.lastNumberTime,
+            frequency: this.numberFrequency.get(newNumber) || 0
+        };
+        
+        this.state.calledNumbersHistory.push(numberData);
+        
+        // Mark numbers on cards
+        this.markNumbersOnCards(newNumber);
+        
+        // Check for winners
+        this.checkForWinners();
+        
+        return numberData;
+    }
+    
+    // Get letter for a number (B:1-15, I:16-30, N:31-45, G:46-60, O:61-75)
+    getNumberLetter(number) {
+        if (number <= 15) return 'B';
+        if (number <= 30) return 'I';
+        if (number <= 45) return 'N';
+        if (number <= 60) return 'G';
+        return 'O';
+    }
+    
+    // Mark numbers on all cards
+    markNumbersOnCards(number) {
+        for (const [cardNumber, cardData] of this.cardsData) {
+            cardData.numbers.forEach(cell => {
+                if (cell.number === number) {
+                    cell.isMarked = true;
+                    cardData.markedNumbers.add(number);
+                }
+            });
+        }
+    }
+    
+    // Check for winners
+    checkForWinners() {
+        const winners = [];
+        
+        for (const [cardNumber, cardData] of this.cardsData) {
+            // Check each winning pattern
+            for (const pattern of this.winningPatterns) {
+                if (!cardData.patternsCompleted.has(pattern) && 
+                    this.checkPattern(cardData, pattern)) {
+                    
+                    cardData.patternsCompleted.add(pattern);
+                    
+                    winners.push({
+                        cardNumber,
+                        pattern,
+                        winningNumbers: Array.from(cardData.markedNumbers),
+                        timestamp: Date.now()
+                    });
+                }
+            }
+        }
+        
+        if (winners.length > 0) {
+            this.state.winners.push(...winners);
+            
+            // Check if game should end
+            if (this.shouldEndGame()) {
+                this.endGame();
+            }
+        }
+        
+        return winners;
+    }
+    
+    // Check specific pattern on a card
+    checkPattern(cardData, pattern) {
+        switch (pattern) {
+            case 'LINE':
+                return this.checkLinePattern(cardData);
+            case 'FOUR_CORNERS':
+                return this.checkFourCornersPattern(cardData);
+            case 'BLACKOUT':
+                return this.checkBlackoutPattern(cardData);
+            default:
+                return false;
+        }
+    }
+    
+    // Check for any complete line
+    checkLinePattern(cardData) {
+        const grid = this.createNumberGrid(cardData);
+        
+        // Check rows
+        for (let row = 0; row < 5; row++) {
+            let complete = true;
+            for (let col = 0; col < 5; col++) {
+                if (!grid[row][col].isMarked) {
+                    complete = false;
+                    break;
+                }
+            }
+            if (complete) return true;
+        }
+        
+        // Check columns
+        for (let col = 0; col < 5; col++) {
+            let complete = true;
+            for (let row = 0; row < 5; row++) {
+                if (!grid[row][col].isMarked) {
+                    complete = false;
+                    break;
+                }
+            }
+            if (complete) return true;
+        }
+        
+        // Check diagonals
+        let diag1Complete = true;
+        let diag2Complete = true;
+        
+        for (let i = 0; i < 5; i++) {
+            if (!grid[i][i].isMarked) diag1Complete = false;
+            if (!grid[i][4 - i].isMarked) diag2Complete = false;
+        }
+        
+        return diag1Complete || diag2Complete;
+    }
+    
+    // Check four corners pattern
+    checkFourCornersPattern(cardData) {
+        const grid = this.createNumberGrid(cardData);
+        
+        return grid[0][0].isMarked &&  // Top-left
+               grid[0][4].isMarked &&  // Top-right
+               grid[4][0].isMarked &&  // Bottom-left
+               grid[4][4].isMarked;    // Bottom-right
+    }
+    
+    // Check blackout pattern (all numbers marked)
+    checkBlackoutPattern(cardData) {
+        return cardData.markedNumbers.size === 24; // 25 cells - free space
+    }
+    
+    // Create 5x5 grid from card data
+    createNumberGrid(cardData) {
+        const grid = Array(5).fill().map(() => Array(5).fill(null));
+        
+        cardData.numbers.forEach(cell => {
+            grid[cell.row][cell.column] = {
+                number: cell.number,
+                isMarked: cell.isMarked || cell.isFreeSpace,
+                letter: cell.letter
+            };
         });
         
-        // Update UI
-        this.app.handleNumberDrawn(number);
+        return grid;
     }
     
-    updateGameTimer() {
-        if (!this.gameStartTime) return;
-        
-        const elapsed = Math.floor((Date.now() - this.gameStartTime) / 1000);
-        const minutes = Math.floor(elapsed / 60);
-        const seconds = elapsed % 60;
-        
-        this.app.uiManager.updateGameTimer(minutes, seconds);
+    // Determine if game should end
+    shouldEndGame() {
+        // End game if any blackout is achieved
+        return this.state.winners.some(winner => winner.pattern === 'BLACKOUT');
     }
     
-    checkForBingo() {
-        if (!this.autoMarkEnabled) return;
+    // End the game
+    endGame() {
+        this.state.gameEnded = true;
+        this.state.gameStarted = false;
         
-        const playerCards = this.app.cardManager.getPlayerCards();
-        let hasBingo = false;
+        console.log('Game ended. Winners:', this.state.winners);
         
-        for (const card of playerCards) {
-            if (this.checkCardForBingo(card)) {
-                hasBingo = true;
-                break;
-            }
-        }
-        
-        if (hasBingo) {
-            this.app.uiManager.showBingoButton(true);
-            this.app.uiManager.highlightBingoButton();
-        }
-    }
-    
-    checkCardForBingo(card) {
-        const patterns = this.getBingoPatterns();
-        
-        for (const pattern of patterns) {
-            if (this.checkPattern(card, pattern)) {
-                return true;
-            }
-        }
-        
-        return false;
-    }
-    
-    getBingoPatterns() {
-        // Common bingo patterns
-        return [
-            // Horizontal lines
-            [[0,0], [0,1], [0,2], [0,3], [0,4]],
-            [[1,0], [1,1], [1,2], [1,3], [1,4]],
-            [[2,0], [2,1], [2,2], [2,3], [2,4]],
-            [[3,0], [3,1], [3,2], [3,3], [3,4]],
-            [[4,0], [4,1], [4,2], [4,3], [4,4]],
-            
-            // Vertical lines
-            [[0,0], [1,0], [2,0], [3,0], [4,0]],
-            [[0,1], [1,1], [2,1], [3,1], [4,1]],
-            [[0,2], [1,2], [2,2], [3,2], [4,2]],
-            [[0,3], [1,3], [2,3], [3,3], [4,3]],
-            [[0,4], [1,4], [2,4], [3,4], [4,4]],
-            
-            // Diagonals
-            [[0,0], [1,1], [2,2], [3,3], [4,4]],
-            [[0,4], [1,3], [2,2], [3,1], [4,0]],
-            
-            // Four corners
-            [[0,0], [0,4], [4,0], [4,4]],
-            
-            // X pattern
-            [[0,0], [1,1], [3,3], [4,4], [0,4], [1,3], [3,1], [4,0]]
-        ];
-    }
-    
-    checkPattern(card, pattern) {
-        for (const [row, col] of pattern) {
-            const number = card.numbers[row][col];
-            if (!this.drawnNumbers.has(number) && !(row === 2 && col === 2)) { // Free space
-                return false;
-            }
-        }
-        return true;
-    }
-    
-    toggleAutoMark() {
-        this.autoMarkEnabled = !this.autoMarkEnabled;
-        this.app.uiManager.updateAutoMarkButton(this.autoMarkEnabled);
-    }
-    
-    stopGame() {
-        if (this.selectionTimer) {
-            clearInterval(this.selectionTimer);
-        }
-        
-        if (this.gameTimer) {
-            clearInterval(this.gameTimer);
-        }
-        
-        if (this.numberDrawInterval) {
-            clearInterval(this.numberDrawInterval);
-        }
-    }
-    
-    getGameStats() {
         return {
-            drawnNumbers: this.drawnNumbers.size,
-            gameDuration: this.gameStartTime ? Date.now() - this.gameStartTime : 0
+            winners: this.state.winners,
+            totalNumbersCalled: this.state.calledNumbers.size,
+            duration: Date.now() - this.state.startTime
+        };
+    }
+    
+    // Get card data
+    getCardData(cardNumber) {
+        return this.cardsData.get(cardNumber);
+    }
+    
+    // Get all card data
+    getAllCardData() {
+        return Array.from(this.cardsData.entries()).map(([cardNumber, data]) => ({
+            cardNumber,
+            ...data
+        }));
+    }
+    
+    // Get game statistics
+    getStatistics() {
+        const totalPossibleNumbers = 75;
+        const numbersCalled = this.state.calledNumbers.size;
+        const percentageCalled = (numbersCalled / totalPossibleNumbers) * 100;
+        
+        // Most frequent numbers called
+        const numberStats = Array.from(this.numberFrequency.entries())
+            .map(([number, frequency]) => ({
+                number,
+                frequency,
+                called: this.state.calledNumbers.has(number)
+            }))
+            .sort((a, b) => b.frequency - a.frequency);
+        
+        // Card statistics
+        const cardStats = Array.from(this.cardsData.entries()).map(([cardNumber, data]) => ({
+            cardNumber,
+            markedNumbers: data.markedNumbers.size,
+            totalNumbers: 24, // Excluding free space
+            completionPercentage: (data.markedNumbers.size / 24) * 100,
+            patternsCompleted: Array.from(data.patternsCompleted)
+        }));
+        
+        return {
+            gameId: this.state.gameId,
+            numbersCalled,
+            percentageCalled,
+            totalWinners: this.state.winners.length,
+            currentNumber: this.state.currentNumber,
+            gameDuration: this.state.startTime ? Date.now() - this.state.startTime : 0,
+            numberStats: numberStats.slice(0, 10), // Top 10
+            cardStats,
+            winners: this.state.winners
+        };
+    }
+    
+    // Get game state
+    getState() {
+        return {
+            ...this.state,
+            cardsData: Array.from(this.cardsData.entries()),
+            numberFrequency: Array.from(this.numberFrequency.entries()),
+            winningPatterns: Array.from(this.winningPatterns)
+        };
+    }
+    
+    // Reset game
+    reset() {
+        this.state = {
+            gameId: null,
+            selectedCards: [],
+            calledNumbers: new Set(),
+            calledNumbersHistory: [],
+            currentNumber: null,
+            gameStarted: false,
+            gameEnded: false,
+            winners: [],
+            patterns: [],
+            players: [],
+            startTime: null,
+            lastNumberTime: null
+        };
+        
+        this.cardsData.clear();
+        this.numberFrequency.clear();
+        this.winningPatterns.clear();
+    }
+    
+    // Export game data
+    exportGameData() {
+        return {
+            gameId: this.state.gameId,
+            startTime: this.state.startTime,
+            endTime: this.state.gameEnded ? Date.now() : null,
+            selectedCards: this.state.selectedCards,
+            calledNumbers: Array.from(this.state.calledNumbers),
+            calledNumbersHistory: this.state.calledNumbersHistory,
+            winners: this.state.winners,
+            cardsData: this.getAllCardData(),
+            statistics: this.getStatistics()
         };
     }
 }
