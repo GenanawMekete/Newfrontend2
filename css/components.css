@@ -1,363 +1,276 @@
-/* Cards Selection Components */
-.cards-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 20px;
-    margin: 20px 0;
-}
-
-.bingo-card-selection {
-    background: var(--card-background);
-    border-radius: var(--border-radius);
-    padding: 20px;
-    box-shadow: var(--shadow);
-    transition: all 0.3s ease;
-    border: 3px solid transparent;
+/* Button Styles */
+.btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
     cursor: pointer;
-    position: relative;
-    overflow: hidden;
-}
-
-.bingo-card-selection:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-}
-
-.bingo-card-selection.selected {
-    border-color: var(--accent-color);
-    background-color: rgba(255, 107, 107, 0.05);
-}
-
-.bingo-card-selection.selected::before {
-    content: '✓';
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    background: var(--accent-color);
-    color: white;
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    display: flex;
+    transition: all var(--transition-speed);
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-weight: bold;
+    gap: 0.5rem;
+    text-decoration: none;
+    user-select: none;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 136, 204, 0.3);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+.btn-primary:disabled {
+    background-color: #666;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.btn-secondary {
+    background-color: transparent;
+    color: var(--text-primary);
+    border: 2px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: var(--primary-color);
+}
+
+.btn-small {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+}
+
+/* Card Preview Styles */
+.card-preview {
+    background: linear-gradient(135deg, var(--background-light), var(--background-dark));
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    border: 2px solid var(--border-color);
 }
 
 .card-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 15px;
-    padding-bottom: 10px;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
     border-bottom: 1px solid var(--border-color);
 }
 
-.card-id {
-    font-weight: 700;
+.card-title {
+    font-size: 1.2rem;
+    font-weight: bold;
     color: var(--primary-color);
-    font-size: 1.1rem;
 }
 
-.card-numbers {
+.card-status {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.875rem;
+    font-weight: bold;
+}
+
+.status-available {
+    background-color: var(--success-color);
+    color: white;
+}
+
+.status-unavailable {
+    background-color: var(--danger-color);
+    color: white;
+}
+
+/* Bingo Card Grid */
+.bingo-card {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
-    gap: 8px;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
 }
 
-.card-number {
+.bingo-cell {
     aspect-ratio: 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #f8f9fa;
-    border-radius: 6px;
-    font-weight: 600;
-    font-size: 1rem;
-    border: 1px solid var(--border-color);
-    transition: all 0.2s ease;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: all var(--transition-speed);
 }
 
-.card-number.marked {
+.bingo-cell.free {
     background-color: var(--primary-color);
     color: white;
+}
+
+.bingo-cell.marked {
+    background-color: var(--success-color);
+    color: white;
+    transform: scale(0.95);
+}
+
+.bingo-cell:hover:not(.free) {
+    background-color: rgba(255, 255, 255, 0.2);
     transform: scale(1.05);
 }
 
-/* Number Grid Components */
-.number-grid {
-    background: white;
-    border-radius: var(--border-radius);
-    padding: 20px;
-    box-shadow: var(--shadow);
-    margin: 20px 0;
+.bingo-header {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
 }
 
-.grid-header {
+.bingo-letter {
     text-align: center;
-    margin-bottom: 15px;
+    font-weight: bold;
+    font-size: 1.2rem;
     color: var(--primary-color);
-    font-size: 1.3rem;
+    padding: 0.5rem;
 }
 
-.numbers-container {
+/* Game Board Components */
+.game-board {
+    background-color: var(--background-light);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.number-grid {
     display: grid;
     grid-template-columns: repeat(10, 1fr);
-    gap: 8px;
+    gap: 0.5rem;
+    margin: 1rem 0;
 }
 
-.grid-number {
+.number-cell {
     aspect-ratio: 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #f0f4f8;
+    background-color: rgba(255, 255, 255, 0.1);
     border-radius: 8px;
-    font-weight: 700;
-    font-size: 1.1rem;
-    transition: all 0.3s ease;
-    position: relative;
+    font-weight: bold;
+    transition: all var(--transition-speed);
 }
 
-.grid-number.called {
-    background: var(--primary-color);
+.number-cell.called {
+    background-color: var(--primary-color);
     color: white;
-    transform: scale(1.05);
+    transform: scale(0.95);
 }
 
-.grid-number.called::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 70%;
-    height: 70%;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.2);
+.number-cell.recent {
+    animation: pulse 2s infinite;
 }
 
-.grid-number.recent {
-    animation: pulse 1s ease;
+.number-cell.bingo {
+    background-color: var(--success-color);
+    color: white;
 }
 
-/* Player Cards Components */
-.player-cards-container {
-    margin-top: 25px;
-}
-
-.player-cards-container h3 {
-    margin-bottom: 15px;
-    color: var(--primary-color);
+/* Winner Modal */
+.winner-modal {
     text-align: center;
-    font-size: 1.4rem;
 }
 
-.player-cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 15px;
-}
-
-.player-card {
-    background: white;
-    border-radius: var(--border-radius);
-    padding: 15px;
-    box-shadow: var(--shadow);
-    transition: all 0.3s ease;
-}
-
-.player-card.active {
-    border: 2px solid var(--accent-color);
-    box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.2);
-}
-
-.player-card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.player-card-numbers {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 5px;
-}
-
-/* Winner Screen Components */
-.winner-content {
-    text-align: center;
-    padding: 30px 20px;
-    background: white;
-    border-radius: var(--border-radius);
-    box-shadow: var(--shadow);
-    max-width: 500px;
-    margin: 0 auto;
-    animation: fadeIn 0.8s ease;
+.winner-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    color: var(--warning-color);
 }
 
 .winner-title {
-    color: var(--accent-color);
-    font-size: 2.5rem;
-    margin-bottom: 25px;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+    font-size: 2rem;
+    color: var(--warning-color);
+    margin-bottom: 0.5rem;
 }
 
-.winner-info {
-    margin-bottom: 25px;
-    padding: 20px;
-    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-    border-radius: var(--border-radius);
+.winner-card {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 1rem;
+    margin: 1rem 0;
 }
 
-.winner-avatar {
-    width: 80px;
-    height: 80px;
+/* Loading States */
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
     border-radius: 50%;
-    overflow: hidden;
-    margin: 0 auto 15px;
-    border: 4px solid var(--accent-color);
+    border-top-color: var(--primary-color);
+    animation: spin 1s linear infinite;
+    margin: 2rem auto;
 }
 
-.winner-avatar img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+@keyframes spin {
+    to { transform: rotate(360deg); }
 }
 
-.winner-info h3 {
-    font-size: 1.8rem;
-    color: var(--primary-color);
-    margin-bottom: 5px;
+.loading-text {
+    text-align: center;
+    color: var(--text-secondary);
+    margin-top: 1rem;
 }
 
-.winner-stats {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 15px;
-    margin-bottom: 25px;
-    padding: 20px;
-    background: #f8f9fa;
-    border-radius: var(--border-radius);
+/* Empty States */
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--text-secondary);
 }
 
-.winner-stats p {
-    font-size: 1.1rem;
-    margin: 5px 0;
+.empty-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
 }
 
-.winner-stats span {
-    font-weight: 700;
-    color: var(--primary-color);
+/* Tooltips */
+.tooltip {
+    position: relative;
+    display: inline-block;
 }
 
-.restart-timer {
-    background: var(--primary-color);
-    color: white;
-    padding: 15px;
-    border-radius: var(--border-radius);
-    font-size: 1.2rem;
-}
-
-.restart-timer span {
-    font-weight: 700;
-    font-size: 1.4rem;
-}
-
-/* Mobile Navigation */
-.mobile-nav {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: white;
-    border-top: 1px solid var(--border-color);
-    padding: 10px 0;
-    display: flex;
-    justify-content: space-around;
+.tooltip .tooltip-text {
+    visibility: hidden;
+    width: 200px;
+    background-color: var(--background-dark);
+    color: var(--text-primary);
+    text-align: center;
+    border-radius: 6px;
+    padding: 0.5rem;
+    position: absolute;
     z-index: 1000;
-    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    opacity: 0;
+    transition: opacity var(--transition-speed);
+    font-size: 0.875rem;
+    border: 1px solid var(--border-color);
 }
 
-.nav-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 5px;
-    padding: 10px;
-    border-radius: 8px;
-    transition: all 0.3s ease;
-    cursor: pointer;
-    min-width: 70px;
-}
-
-.nav-item.active {
-    background: rgba(74, 111, 165, 0.1);
-    color: var(--primary-color);
-}
-
-.nav-icon {
-    font-size: 1.5rem;
-}
-
-.nav-label {
-    font-size: 0.85rem;
-    font-weight: 500;
-}
-
-/* Modal */
-.modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.7);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 2000;
-    animation: fadeIn 0.3s ease;
-}
-
-.modal-content {
-    background: white;
-    border-radius: var(--border-radius);
-    padding: 30px;
-    max-width: 500px;
-    width: 90%;
-    max-height: 80vh;
-    overflow-y: auto;
-    animation: slideUp 0.4s ease;
-}
-
-.modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-    padding-bottom: 15px;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.modal-title {
-    font-size: 1.5rem;
-    color: var(--primary-color);
-    margin: 0;
-}
-
-.modal-close {
-    background: none;
-    border: none;
-    font-size: 1.8rem;
-    cursor: pointer;
-    color: var(--text-light);
-    transition: color 0.3s ease;
-}
-
-.modal-close:hover {
-    color: var(--accent-color);
+.tooltip:hover .tooltip-text {
+    visibility: visible;
+    opacity: 1;
 }
