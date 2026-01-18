@@ -2,663 +2,130 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#4a6fa5">
-    <meta name="description" content="Mobile-friendly real-time bingo game with 400 unique cards and instant wins">
-    
-    <title>Geeze Bingo - Mobile Bingo Game</title>
-    
-    <!-- PWA Meta -->
-    <link rel="manifest" href="manifest.json">
-    <link rel="icon" href="assets/icons/favicon.ico">
-    <link rel="apple-touch-icon" href="assets/icons/icon-152x152.png">
-    
-    <!-- CSS -->
+    <title>Telegram Bingo</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/components.css">
-    <link rel="stylesheet" href="css/responsive.css">
     <link rel="stylesheet" href="css/animations.css">
-    
-    <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Socket.IO -->
-    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
-    
-    <!-- Telegram Web App -->
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="css/responsive.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="assets/icons/favicon.ico">
 </head>
 <body>
-    <!-- Loading Screen -->
-    <div id="loadingScreen" class="loading-screen">
-        <div class="loader">
-            <div class="bingo-loader">
-                <span class="letter">B</span>
-                <span class="letter">I</span>
-                <span class="letter">N</span>
-                <span class="letter">G</span>
-                <span class="letter">O</span>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo-container">
+                <img src="assets/images/logo.png" alt="Bingo Logo" class="logo">
+                <h1>Telegram Bingo</h1>
             </div>
-            <p class="loading-text">Loading Game...</p>
-        </div>
-    </div>
-
-    <!-- Network Status -->
-    <div id="networkStatus" class="network-status">
-        <span class="network-icon">📡</span>
-        <span class="network-text">Connecting...</span>
-    </div>
-
-    <!-- Main App Container -->
-    <div id="appContainer" class="app-container" style="display: none;">
-        <!-- Mobile Header -->
-        <header class="mobile-header">
-            <div class="header-left">
-                <button id="menuToggle" class="menu-toggle" aria-label="Menu">
-                    <span class="menu-icon"></span>
-                    <span class="menu-icon"></span>
-                    <span class="menu-icon"></span>
-                </button>
-                <div class="app-logo">
-                    <span class="logo-icon">🎯</span>
-                    <span class="logo-text">Geeze Bingo</span>
+            <div class="game-info">
+                <div class="players-count">
+                    <span class="icon">👥</span>
+                    <span id="playersCount">1</span>
                 </div>
-            </div>
-            <div class="header-right">
-                <div class="user-balance" id="userBalance" onclick="app.showWalletView()">
-                    <span class="balance-amount">0</span>
-                    <span class="balance-icon">💰</span>
-                </div>
-                <div class="header-actions">
-                    <button class="header-btn sound-toggle" id="soundToggle" aria-label="Toggle Sound">
-                        <span class="sound-icon">🔊</span>
-                    </button>
-                </div>
+                <div class="timer" id="gameTimer">00:30</div>
             </div>
         </header>
 
-        <!-- Side Navigation Menu -->
-        <nav id="sideMenu" class="side-menu">
-            <div class="menu-header">
-                <div class="user-profile">
-                    <div class="user-avatar" id="userAvatar">👤</div>
-                    <div class="user-info">
-                        <div class="user-name" id="userName">Guest</div>
-                        <div class="user-id" id="userId">ID: --------</div>
-                    </div>
-                </div>
-                <button class="menu-close" id="menuClose" aria-label="Close Menu">✕</button>
-            </div>
-            
-            <div class="menu-body">
-                <div class="menu-section">
-                    <h3 class="section-title">Game</h3>
-                    <div class="menu-items">
-                        <a href="#" class="menu-item active" data-view="game">
-                            <span class="menu-icon">🎮</span>
-                            <span class="menu-text">Play Game</span>
-                        </a>
-                        <a href="#" class="menu-item" data-view="cards">
-                            <span class="menu-icon">🃏</span>
-                            <span class="menu-text">My Cards</span>
-                            <span class="menu-badge" id="cardsBadge">0</span>
-                        </a>
-                        <a href="#" class="menu-item" data-view="numbers">
-                            <span class="menu-icon">🔢</span>
-                            <span class="menu-text">Numbers</span>
-                        </a>
-                        <a href="#" class="menu-item" data-view="wallet">
-                            <span class="menu-icon">💰</span>
-                            <span class="menu-text">Wallet</span>
-                        </a>
-                    </div>
-                </div>
-                
-                <div class="menu-section">
-                    <h3 class="section-title">Account</h3>
-                    <div class="menu-items">
-                        <a href="#" class="menu-item" data-action="profile">
-                            <span class="menu-icon">👤</span>
-                            <span class="menu-text">Profile</span>
-                        </a>
-                        <a href="#" class="menu-item" data-action="history">
-                            <span class="menu-icon">📊</span>
-                            <span class="menu-text">History</span>
-                        </a>
-                        <a href="#" class="menu-item" data-action="stats">
-                            <span class="menu-icon">📈</span>
-                            <span class="menu-text">Statistics</span>
-                        </a>
-                        <a href="#" class="menu-item" data-action="referral">
-                            <span class="menu-icon">👥</span>
-                            <span class="menu-text">Refer Friends</span>
-                        </a>
-                    </div>
-                </div>
-                
-                <div class="menu-section">
-                    <h3 class="section-title">Support</h3>
-                    <div class="menu-items">
-                        <a href="#" class="menu-item" data-action="rules">
-                            <span class="menu-icon">📖</span>
-                            <span class="menu-text">Game Rules</span>
-                        </a>
-                        <a href="#" class="menu-item" data-action="help">
-                            <span class="menu-icon">❓</span>
-                            <span class="menu-text">Help Center</span>
-                        </a>
-                        <a href="#" class="menu-item" data-action="support">
-                            <span class="menu-icon">💬</span>
-                            <span class="menu-text">Contact Support</span>
-                        </a>
-                        <a href="#" class="menu-item" data-action="settings">
-                            <span class="menu-icon">⚙️</span>
-                            <span class="menu-text">Settings</span>
-                        </a>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="menu-footer">
-                <button class="btn-logout" id="logoutBtn">Logout</button>
-                <div class="app-version">v1.0.0</div>
-            </div>
-        </nav>
-
-        <!-- Main Content -->
+        <!-- Main Content Area -->
         <main class="main-content">
-            <!-- Game View -->
-            <div id="gameView" class="content-view active">
-                <!-- Game Status Bar -->
-                <div class="game-status">
-                    <div class="status-item">
-                        <div class="status-label">Players</div>
-                        <div class="status-value" id="playersCount">0</div>
-                    </div>
-                    <div class="status-item">
-                        <div class="status-label">Cards</div>
-                        <div class="status-value" id="cardsCount">0/400</div>
-                    </div>
-                    <div class="status-item">
-                        <div class="status-label">Numbers</div>
-                        <div class="status-value" id="numbersCount">0</div>
-                    </div>
-                    <div class="status-item">
-                        <div class="status-label">Prize</div>
-                        <div class="status-value" id="prizePool">0</div>
-                    </div>
+            <!-- Card Selection Screen (Initial State) -->
+            <section id="cardSelectionScreen" class="screen active">
+                <div class="screen-header">
+                    <h2>Select Your Bingo Cards</h2>
+                    <p class="subtitle">Choose up to <span id="maxCards">4</span> cards. Time left: <span id="selectionTimer">30</span>s</p>
                 </div>
-
-                <!-- Game Phase Indicator -->
-                <div class="game-phase">
-                    <div class="phase-indicator" id="phaseIndicator">
-                        <div class="phase-badge waiting">Waiting</div>
-                        <div class="phase-timer" id="phaseTimer">--:--</div>
-                    </div>
-                    <div class="phase-progress">
-                        <div class="progress-bar">
-                            <div class="progress-fill" id="phaseProgress"></div>
-                        </div>
-                    </div>
+                <div class="cards-container" id="cardsContainer">
+                    <!-- Cards will be generated here -->
                 </div>
-
-                <!-- Game Board -->
-                <div class="game-board-container">
-                    <div class="board-header">
-                        <h2 class="board-title">Bingo Board</h2>
-                        <div class="board-actions">
-                            <button class="board-action" onclick="app.toggleAutoDaub()">
-                                <span class="action-icon" id="autoDaubIcon">✓</span>
-                                <span class="action-text">Auto</span>
-                            </button>
-                            <button class="board-action" onclick="app.showCardGrid()">
-                                <span class="action-icon">🃏</span>
-                                <span class="action-text">Cards</span>
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div class="bingo-board" id="bingoBoard">
-                        <!-- Numbers will be populated here -->
-                        <div class="loading-numbers">
-                            <div class="loading-spinner"></div>
-                            <p>Loading numbers...</p>
-                        </div>
-                    </div>
+                <div class="selection-controls">
+                    <button id="confirmSelection" class="btn btn-primary" disabled>Confirm Selection (0/4)</button>
                 </div>
+            </section>
 
-                <!-- Recent Numbers -->
-                <div class="recent-numbers-container">
-                    <div class="recent-header">
-                        <h3 class="recent-title">Recent Numbers</h3>
-                        <div class="recent-stats">
-                            <span id="recentCount">0</span> drawn
-                        </div>
-                    </div>
-                    <div class="recent-list" id="recentList">
-                        <!-- Recent numbers will appear here -->
-                    </div>
+            <!-- Game Board Screen -->
+            <section id="gameScreen" class="screen">
+                <div class="screen-header">
+                    <h2>Bingo Game</h2>
+                    <p class="subtitle">Last number: <span id="lastNumber">--</span></p>
                 </div>
-
+                
+                <!-- Number Grid -->
+                <div id="numberGridContainer"></div>
+                
+                <!-- Player Cards -->
+                <div class="player-cards-container">
+                    <h3>Your Cards</h3>
+                    <div id="playerCardsContainer"></div>
+                </div>
+                
                 <!-- Game Controls -->
                 <div class="game-controls">
-                    <button class="game-btn primary-btn" id="selectCardsBtn" onclick="app.openCardSelection()">
-                        <span class="btn-icon">➕</span>
-                        <span class="btn-text">Select Cards</span>
-                    </button>
-                    <button class="game-btn bingo-btn" id="bingoBtn" onclick="app.claimBingo()">
-                        <span class="btn-icon">🎉</span>
-                        <span class="btn-text">BINGO!</span>
-                    </button>
-                    <button class="game-btn secondary-btn" onclick="app.quickSelect()">
-                        <span class="btn-icon">⚡</span>
-                        <span class="btn-text">Quick Pick</span>
-                    </button>
+                    <button id="bingoBtn" class="btn btn-success" disabled>BINGO!</button>
+                    <button id="autoMarkBtn" class="btn btn-secondary">Auto-Mark: ON</button>
                 </div>
-            </div>
-
-            <!-- Cards View -->
-            <div id="cardsView" class="content-view">
-                <div class="cards-header">
-                    <h2 class="view-title">My Cards</h2>
-                    <div class="cards-stats">
-                        <div class="stat-item">
-                            <span class="stat-label">Selected</span>
-                            <span class="stat-value" id="selectedCardsCount">0/4</span>
+            </section>
+            
+            <!-- Winner Screen -->
+            <section id="winnerScreen" class="screen">
+                <div class="winner-content">
+                    <h2 class="winner-title">🎉 BINGO! 🎉</h2>
+                    <div class="winner-info">
+                        <div class="winner-avatar">
+                            <img src="" alt="Winner" id="winnerAvatar">
                         </div>
-                        <button class="btn-small" onclick="app.openCardSelection()">
-                            Add More
-                        </button>
+                        <h3 id="winnerName">Player Name</h3>
+                        <p>has won the game!</p>
+                    </div>
+                    <div class="winner-stats">
+                        <p>Winning card: <span id="winningCard">#1</span></p>
+                        <p>Numbers called: <span id="numbersCalled">0</span></p>
+                        <p>Time: <span id="gameDuration">0:00</span></p>
+                    </div>
+                    <div class="restart-timer">
+                        <p>Next game in: <span id="restartTimer">10</span>s</p>
                     </div>
                 </div>
-                
-                <div class="cards-container" id="cardsContainer">
-                    <!-- Cards will be populated here -->
-                    <div class="empty-cards">
-                        <div class="empty-icon">🃏</div>
-                        <h3>No Cards Selected</h3>
-                        <p>Select cards during the card selection phase to play</p>
-                        <button class="btn-primary" onclick="app.openCardSelection()">
-                            Select Cards Now
-                        </button>
-                    </div>
-                </div>
-                
-                <div class="card-preview-section">
-                    <h3 class="section-title">Card Preview</h3>
-                    <div class="card-preview" id="cardPreview">
-                        <!-- Selected card preview -->
-                        <div class="no-card-selected">
-                            Select a card to preview
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Numbers View -->
-            <div id="numbersView" class="content-view">
-                <div class="numbers-header">
-                    <h2 class="view-title">Bingo Numbers</h2>
-                    <div class="numbers-filter">
-                        <div class="filter-options">
-                            <button class="filter-btn active" data-filter="all">All</button>
-                            <button class="filter-btn" data-filter="B">B</button>
-                            <button class="filter-btn" data-filter="I">I</button>
-                            <button class="filter-btn" data-filter="N">N</button>
-                            <button class="filter-btn" data-filter="G">G</button>
-                            <button class="filter-btn" data-filter="O">O</button>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="bingo-letters">
-                    <div class="bingo-letter active" data-letter="B">B<br><small>1-15</small></div>
-                    <div class="bingo-letter" data-letter="I">I<br><small>16-30</small></div>
-                    <div class="bingo-letter" data-letter="N">N<br><small>31-45</small></div>
-                    <div class="bingo-letter" data-letter="G">G<br><small>46-60</small></div>
-                    <div class="bingo-letter" data-letter="O">O<br><small>61-75</small></div>
-                </div>
-                
-                <div class="numbers-grid" id="numbersGrid">
-                    <!-- Numbers 1-75 will be populated here -->
-                </div>
-                
-                <div class="drawn-numbers-summary">
-                    <h3 class="section-title">Drawn Numbers</h3>
-                    <div class="drawn-summary">
-                        <div class="summary-item">
-                            <span class="summary-label">Total Drawn:</span>
-                            <span class="summary-value" id="totalDrawn">0/75</span>
-                        </div>
-                        <div class="summary-item">
-                            <span class="summary-label">Last Number:</span>
-                            <span class="summary-value" id="lastNumber">-</span>
-                        </div>
-                        <div class="summary-item">
-                            <span class="summary-label">Next Draw:</span>
-                            <span class="summary-value" id="nextDraw">-</span>
-                        </div>
-                    </div>
-                    <div class="drawn-list" id="drawnList">
-                        <!-- Full list of drawn numbers -->
-                    </div>
-                </div>
-            </div>
-
-            <!-- Wallet View -->
-            <div id="walletView" class="content-view">
-                <div class="wallet-header">
-                    <div class="wallet-balance-card">
-                        <div class="balance-label">Your Balance</div>
-                        <div class="balance-amount-large" id="walletBalanceLarge">0.00</div>
-                        <div class="balance-actions">
-                            <button class="wallet-action deposit" onclick="app.showDepositModal()">
-                                <span class="action-icon">⬇️</span>
-                                <span>Deposit</span>
-                            </button>
-                            <button class="wallet-action withdraw" onclick="app.showWithdrawModal()">
-                                <span class="action-icon">⬆️</span>
-                                <span>Withdraw</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="wallet-stats">
-                    <div class="stat-card">
-                        <div class="stat-icon">🎯</div>
-                        <div class="stat-content">
-                            <div class="stat-label">Games Played</div>
-                            <div class="stat-value" id="gamesPlayed">0</div>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">🏆</div>
-                        <div class="stat-content">
-                            <div class="stat-label">Games Won</div>
-                            <div class="stat-value" id="gamesWon">0</div>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">💰</div>
-                        <div class="stat-content">
-                            <div class="stat-label">Total Won</div>
-                            <div class="stat-value" id="totalWon">0.00</div>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">📊</div>
-                        <div class="stat-content">
-                            <div class="stat-label">Win Rate</div>
-                            <div class="stat-value" id="winRate">0%</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="transaction-history">
-                    <h3 class="section-title">Recent Transactions</h3>
-                    <div class="history-list" id="transactionHistory">
-                        <!-- Transactions will appear here -->
-                        <div class="no-transactions">
-                            No transactions yet
-                        </div>
-                    </div>
-                </div>
-            </div>
+            </section>
         </main>
 
-        <!-- Bottom Navigation -->
-        <nav class="bottom-nav">
-            <a href="#" class="nav-item active" data-view="game">
-                <span class="nav-icon">🎮</span>
-                <span class="nav-label">Game</span>
-            </a>
-            <a href="#" class="nav-item" data-view="cards">
-                <span class="nav-icon">🃏</span>
-                <span class="nav-label">Cards</span>
-            </a>
-            <a href="#" class="nav-item" data-view="numbers">
-                <span class="nav-icon">🔢</span>
-                <span class="nav-label">Numbers</span>
-            </a>
-            <a href="#" class="nav-item" data-view="wallet">
-                <span class="nav-icon">💰</span>
-                <span class="nav-label">Wallet</span>
-            </a>
-        </nav>
+        <!-- Mobile Navigation -->
+        <div id="mobileNavContainer"></div>
+        
+        <!-- Winner Modal -->
+        <div id="winnerModalContainer"></div>
 
-        <!-- Card Selection Modal -->
-        <div id="cardSelectionModal" class="modal-overlay">
-            <div class="modal-content card-selection-modal">
-                <div class="modal-header">
-                    <h2 class="modal-title">Select Your Cards</h2>
-                    <button class="modal-close" onclick="app.closeCardSelection()">✕</button>
-                </div>
-                <div class="modal-body">
-                    <div class="selection-info">
-                        <div class="info-row">
-                            <div class="info-item">
-                                <span class="info-label">Time Left:</span>
-                                <span class="info-value" id="selectionTime">30s</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="info-label">Selected:</span>
-                                <span class="info-value" id="currentSelected">0/4</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="info-label">Available:</span>
-                                <span class="info-value" id="availableCards">400</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="card-grid-container">
-                        <div class="card-grid" id="cardGrid">
-                            <!-- 400 cards grid will be populated here -->
-                        </div>
-                    </div>
-                    
-                    <div class="selection-actions">
-                        <button class="action-btn secondary" onclick="app.quickPickCards()">
-                            Quick Pick 4 Cards
-                        </button>
-                        <button class="action-btn primary" onclick="app.confirmCardSelection()">
-                            Confirm Selection
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Bingo Claim Modal -->
-        <div id="bingoClaimModal" class="modal-overlay">
-            <div class="modal-content bingo-claim-modal">
-                <div class="modal-header">
-                    <h2 class="modal-title">Claim Bingo</h2>
-                    <button class="modal-close" onclick="app.closeBingoClaim()">✕</button>
-                </div>
-                <div class="modal-body">
-                    <div class="claim-info">
-                        <h3>Select Winning Pattern</h3>
-                        <p>Choose the pattern you completed on your card</p>
-                    </div>
-                    
-                    <div class="patterns-grid">
-                        <div class="pattern-card" data-pattern="line_1" onclick="app.selectPattern('line_1')">
-                            <div class="pattern-visual">
-                                <div class="pattern-row filled"></div>
-                                <div class="pattern-row"></div>
-                                <div class="pattern-row"></div>
-                                <div class="pattern-row"></div>
-                                <div class="pattern-row"></div>
-                            </div>
-                            <div class="pattern-name">Top Line</div>
-                        </div>
-                        <div class="pattern-card" data-pattern="line_2" onclick="app.selectPattern('line_2')">
-                            <div class="pattern-visual">
-                                <div class="pattern-row"></div>
-                                <div class="pattern-row filled"></div>
-                                <div class="pattern-row"></div>
-                                <div class="pattern-row"></div>
-                                <div class="pattern-row"></div>
-                            </div>
-                            <div class="pattern-name">Middle Line</div>
-                        </div>
-                        <div class="pattern-card" data-pattern="line_3" onclick="app.selectPattern('line_3')">
-                            <div class="pattern-visual">
-                                <div class="pattern-row"></div>
-                                <div class="pattern-row"></div>
-                                <div class="pattern-row filled"></div>
-                                <div class="pattern-row"></div>
-                                <div class="pattern-row"></div>
-                            </div>
-                            <div class="pattern-name">Bottom Line</div>
-                        </div>
-                        <div class="pattern-card" data-pattern="full_house" onclick="app.selectPattern('full_house')">
-                            <div class="pattern-visual">
-                                <div class="pattern-row filled"></div>
-                                <div class="pattern-row filled"></div>
-                                <div class="pattern-row filled"></div>
-                                <div class="pattern-row filled"></div>
-                                <div class="pattern-row filled"></div>
-                            </div>
-                            <div class="pattern-name">Full House</div>
-                        </div>
-                        <div class="pattern-card" data-pattern="four_corners" onclick="app.selectPattern('four_corners')">
-                            <div class="pattern-visual">
-                                <div class="pattern-row corners">
-                                    <span class="corner top-left"></span>
-                                    <span class="corner top-right"></span>
-                                </div>
-                                <div class="pattern-row"></div>
-                                <div class="pattern-row"></div>
-                                <div class="pattern-row"></div>
-                                <div class="pattern-row corners">
-                                    <span class="corner bottom-left"></span>
-                                    <span class="corner bottom-right"></span>
-                                </div>
-                            </div>
-                            <div class="pattern-name">Four Corners</div>
-                        </div>
-                        <div class="pattern-card" data-pattern="diagonal" onclick="app.selectPattern('diagonal')">
-                            <div class="pattern-visual">
-                                <div class="pattern-row diagonal">
-                                    <span class="diag-cell"></span>
-                                </div>
-                                <div class="pattern-row diagonal">
-                                    <span class="diag-cell"></span>
-                                </div>
-                                <div class="pattern-row diagonal">
-                                    <span class="diag-cell"></span>
-                                </div>
-                                <div class="pattern-row diagonal">
-                                    <span class="diag-cell"></span>
-                                </div>
-                                <div class="pattern-row diagonal">
-                                    <span class="diag-cell"></span>
-                                </div>
-                            </div>
-                            <div class="pattern-name">Diagonal</div>
-                        </div>
-                    </div>
-                    
-                    <div class="selected-card-info">
-                        <h4>Selected Card: <span id="selectedCardNumber">-</span></h4>
-                        <div class="card-mini-preview" id="cardMiniPreview">
-                            <!-- Mini card preview -->
-                        </div>
-                    </div>
-                    
-                    <button class="bingo-claim-btn" onclick="app.submitBingoClaim()">
-                        🎉 CLAIM BINGO 🎉
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Winner Announcement -->
-        <div id="winnerModal" class="modal-overlay winner-modal">
-            <div class="modal-content winner-content">
-                <div class="confetti-container">
-                    <div class="confetti"></div>
-                    <div class="confetti"></div>
-                    <div class="confetti"></div>
-                    <div class="confetti"></div>
-                    <div class="confetti"></div>
-                </div>
-                <div class="winner-header">
-                    <div class="winner-icon">🏆</div>
-                    <h1 class="winner-title">BINGO!</h1>
-                </div>
-                <div class="winner-body">
-                    <div class="winner-message" id="winnerMessage">
-                        Congratulations! You won the game!
-                    </div>
-                    <div class="winner-details">
-                        <div class="detail-item">
-                            <span class="detail-label">Winner:</span>
-                            <span class="detail-value" id="winnerName">-</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Card #:</span>
-                            <span class="detail-value" id="winnerCard">-</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Pattern:</span>
-                            <span class="detail-value" id="winnerPattern">-</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Prize:</span>
-                            <span class="detail-value" id="winnerPrize">-</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="winner-footer">
-                    <div class="next-game-timer">
-                        Next game in <span id="nextGameTimer">10</span> seconds
-                    </div>
-                    <button class="btn-primary" onclick="app.closeWinnerModal()">
-                        Continue
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Number Drawn Toast -->
-        <div id="numberToast" class="toast-container">
-            <div class="toast-content">
-                <div class="toast-icon">🔔</div>
-                <div class="toast-message">
-                    <div class="toast-title">Number Drawn!</div>
-                    <div class="toast-number" id="toastNumber">-</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Game Rules Modal -->
-        <div id="rulesModal" class="modal-overlay">
-            <div class="modal-content rules-modal">
-                <div class="modal-header">
-                    <h2 class="modal-title">Game Rules</h2>
-                    <button class="modal-close" onclick="app.closeRulesModal()">✕</button>
-                </div>
-                <div class="modal-body">
-                    <!-- Rules content will be populated -->
-                </div>
-            </div>
-        </div>
+        <!-- Audio Elements -->
+        <audio id="bingoSound" preload="auto">
+            <source src="assets/sounds/bingo.mp3" type="audio/mpeg">
+        </audio>
+        <audio id="cardSelectSound" preload="auto">
+            <source src="assets/sounds/card-select.mp3" type="audio/mpeg">
+        </audio>
+        <audio id="numberDrawnSound" preload="auto">
+            <source src="assets/sounds/number-drawn.mp3" type="audio/mpeg">
+        </audio>
+        <audio id="winSound" preload="auto">
+            <source src="assets/sounds/win.mp3" type="audio/mpeg">
+        </audio>
+        <audio id="buttonClickSound" preload="auto">
+            <source src="assets/sounds/button-click.mp3" type="audio/mpeg">
+        </audio>
     </div>
 
-    <!-- JavaScript Files -->
-    <script src="js/config.js"></script>
-    <script src="js/socket-manager.js"></script>
-    <script src="js/game-engine.js"></script>
-    <script src="js/card-manager.js"></script>
-    <script src="js/audio-manager.js"></script>
-    <script src="js/offline-manager.js"></script>
-    <script src="js/ui-manager.js"></script>
-    <script src="js/app.js"></script>
+    <!-- Load Components -->
+    <script type="module" src="js/config.js"></script>
+    <script type="module" src="js/app.js"></script>
+    <script type="module" src="js/socket-manager.js"></script>
+    <script type="module" src="js/game-engine.js"></script>
+    <script type="module" src="js/card-manager.js"></script>
+    <script type="module" src="js/ui-manager.js"></script>
+    <script type="module" src="js/audio-manager.js"></script>
+    <script type="module" src="js/offline-manager.js"></script>
+    
+    <!-- Telegram Web App SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </body>
 </html>
