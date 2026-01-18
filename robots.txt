@@ -1,4 +1,8 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://your-domain.com/sitemap.xml
+Sitemap: /sitemap.xml
+
+# Telegram Web App
+Disallow: /api/
+Disallow: /admin/
