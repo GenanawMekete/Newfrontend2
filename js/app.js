@@ -1,652 +1,751 @@
-// Main Application Logic
+// Main Application Entry Point
 class BingoApp {
     constructor() {
-        this.userId = null;
-        this.username = 'Guest';
-        this.balance = 0;
-        this.selectedCards = new Set();
-        this.gameState = 'IDLE';
-        this.socket = null;
-        this.countdownInterval = null;
-        this.selectedPattern = null;
-        this.claimingCardId = null;
+        this.initialized = false;
+        this.modules = {};
         
+        // Initialize
         this.init();
     }
-
-    init() {
-        // Initialize Telegram Web App if available
-        this.initTelegram();
-        
-        // Connect to WebSocket
-        this.connectSocket();
-        
-        // Initialize UI components
-        this.initUI();
-        
-        // Load initial data
-        this.loadInitialData();
+    
+    async init() {
+        try {
+            // Show loading screen
+            this.showLoadingScreen();
+            
+            // Initialize modules
+            await this.initializeModules();
+            
+            // Setup event listeners
+            this.setupEventListeners();
+            
+            // Initialize Telegram Web App
+            this.initTelegramWebApp();
+            
+            // Connect to server
+            this.connectToServer();
+            
+            // Initialize service worker
+            this.initServiceWorker();
+            
+            // Hide loading screen
+            setTimeout(() => {
+                this.hideLoadingScreen();
+                this.initialized = true;
+                
+                // Show welcome message
+                this.showWelcomeMessage();
+            }, 1000);
+            
+        } catch (error) {
+            console.error('Failed to initialize app:', error);
+            this.showErrorScreen(error);
+        }
     }
-
-    initTelegram() {
-        if (window.Telegram && Telegram.WebApp) {
+    
+    async initializeModules() {
+        // Initialize all modules
+        this.modules.config = Config;
+        this.modules.socket = getSocketManager();
+        this.modules.game = getGameEngine();
+        this.modules.cards = getCardManager();
+        this.modules.ui = getUIManager();
+        this.modules.audio = getAudioManager();
+        this.modules.offline = getOfflineManager();
+        
+        // Wait for modules to be ready
+        await Promise.all([
+            this.modules.socket,
+            this.modules.game,
+            this.modules.cards,
+            this.modules.ui,
+            this.modules.audio,
+            this.modules.offline
+        ]);
+        
+        console.log('All modules initialized');
+    }
+    
+    setupEventListeners() {
+        // Socket events
+        this.modules.socket.on('connected', () => this.handleSocketConnected());
+        this.modules.socket.on('disconnected', () => this.handleSocketDisconnected());
+        this.modules.socket.on('error', (error) => this.handleSocketError(error));
+        
+        // Game events
+        document.addEventListener('game:status:updated', (e) => this.handleGameStatusUpdate(e));
+        document.addEventListener('game:state:changed', (e) => this.handleGameStateChange(e));
+        document.addEventListener('number:drawn', (e) => this.handleNumberDrawn(e));
+        document.addEventListener('game:winner', (e) => this.handleGameWinner(e));
+        
+        // UI events
+        document.addEventListener('view:changed', (e) => this.handleViewChange(e));
+        document.addEventListener('modal:opened', (e) => this.handleModalOpened(e));
+        document.addEventListener('toast:shown', (e) => this.handleToastShown(e));
+        
+        // App lifecycle events
+        window.addEventListener('online', () => this.handleOnline());
+        window.addEventListener('offline', () => this.handleOffline());
+        window.addEventListener('beforeunload', () => this.handleBeforeUnload());
+        
+        // Custom app events
+        this.setupCustomEventListeners();
+    }
+    
+    setupCustomEventListeners() {
+        // Card selection
+        document.addEventListener('card:select:click', (e) => {
+            this.modules.ui.showCardSelection();
+        });
+        
+        // Bingo claim
+        document.addEventListener('bingo:claim:click', (e) => {
+            this.modules.ui.showBingoClaim(e.detail?.cardId);
+        });
+        
+        // Quick select
+        document.addEventListener('quick:select:click', () => {
+            this.quickSelectCards();
+        });
+        
+        // Auto daub toggle
+        document.addEventListener('auto:daub:toggle', (e) => {
+            this.toggleAutoDaub(e.detail?.enabled);
+        });
+        
+        // Sound toggle
+        document.addEventListener('sound:toggle', (e) => {
+            this.toggleSound(e.detail?.enabled);
+        });
+    }
+    
+    initTelegramWebApp() {
+        if (Config.TELEGRAM.ENABLED) {
             const tg = Telegram.WebApp;
             
-            // Expand web app to full screen
+            // Expand to full screen
             tg.expand();
             
-            // Set up theme
-            document.documentElement.style.setProperty('--bg-color', tg.themeParams.bg_color || '#0f172a');
-            document.documentElement.style.setProperty('--card-bg', tg.themeParams.secondary_bg_color || '#1e293b');
-            
-            // Get user data
-            const user = tg.initDataUnsafe?.user;
-            if (user) {
-                this.userId = user.id.toString();
-                this.username = user.username || user.first_name;
-                this.updateUserInfo();
-            }
+            // Set theme colors
+            this.applyTelegramTheme(tg.themeParams);
             
             // Enable closing confirmation
             tg.enableClosingConfirmation();
             
-            // Handle back button
+            // Setup back button
             tg.BackButton.onClick(() => {
-                tg.close();
+                if (this.modules.ui.getCurrentView() !== 'game') {
+                    this.modules.ui.switchView('game');
+                } else {
+                    tg.close();
+                }
             });
-        } else {
-            // Fallback for browser testing
-            this.userId = 'test_' + Math.random().toString(36).substr(2, 9);
-            this.username = 'Test User';
-            this.updateUserInfo();
-        }
-    }
-
-    connectSocket() {
-        const socketUrl = window.location.hostname === 'localhost' 
-            ? 'http://localhost:3000'
-            : window.location.origin;
             
-        this.socket = io(socketUrl);
-        
-        // Socket event handlers
-        this.socket.on('connect', () => {
-            console.log('Connected to server');
-            this.socket.emit('player:join', {
-                userId: this.userId,
-                username: this.username
+            // Show back button if not on game view
+            document.addEventListener('view:changed', (e) => {
+                if (e.detail.newView !== 'game') {
+                    tg.BackButton.show();
+                } else {
+                    tg.BackButton.hide();
+                }
             });
-        });
-        
-        this.socket.on('game:status', (status) => {
-            this.updateGameStatus(status);
-        });
-        
-        this.socket.on('game:state', (state) => {
-            this.handleGameStateChange(state);
-        });
-        
-        this.socket.on('game:countdown', (data) => {
-            this.updateCountdown(data);
-        });
-        
-        this.socket.on('game:number:drawn', (data) => {
-            this.handleNumberDrawn(data);
-        });
-        
-        this.socket.on('game:winner', (data) => {
-            this.handleWinner(data);
-        });
-        
-        this.socket.on('game:cancelled', (data) => {
-            this.handleGameCancelled(data);
-        });
-        
-        this.socket.on('cards:grid', (grid) => {
-            this.updateCardGrid(grid);
-        });
-        
-        this.socket.on('player:cards', (cards) => {
-            this.updatePlayerCards(cards);
-        });
-        
-        this.socket.on('card:selected', (data) => {
-            this.handleCardSelected(data);
-        });
-        
-        this.socket.on('error', (error) => {
-            this.showError(error.message);
-        });
-    }
-
-    initUI() {
-        // Initialize number grid
-        this.initNumberGrid();
-        
-        // Initialize card selector
-        this.initCardSelector();
-        
-        // Initialize event listeners
-        this.initEventListeners();
-    }
-
-    initNumberGrid() {
-        const grid = document.getElementById('numbersGrid');
-        grid.innerHTML = '';
-        
-        // Create numbers 1-75 in their respective columns
-        for (let num = 1; num <= 75; num++) {
-            const div = document.createElement('div');
-            div.className = 'number-cell';
-            div.dataset.number = num;
-            div.textContent = num;
             
-            // Determine column
-            let column = '';
-            if (num <= 15) column = 'B';
-            else if (num <= 30) column = 'I';
-            else if (num <= 45) column = 'N';
-            else if (num <= 60) column = 'G';
-            else column = 'O';
+            console.log('Telegram Web App initialized');
+        }
+    }
+    
+    applyTelegramTheme(themeParams) {
+        if (!themeParams) return;
+        
+        // Apply Telegram theme colors
+        if (themeParams.bg_color) {
+            document.documentElement.style.setProperty('--bg-color', themeParams.bg_color);
+        }
+        
+        if (themeParams.secondary_bg_color) {
+            document.documentElement.style.setProperty('--surface-color', themeParams.secondary_bg_color);
+        }
+        
+        if (themeParams.text_color) {
+            document.documentElement.style.setProperty('--text-color', themeParams.text_color);
+        }
+        
+        if (themeParams.button_color) {
+            document.documentElement.style.setProperty('--primary-color', themeParams.button_color);
+        }
+        
+        if (themeParams.button_text_color) {
+            document.documentElement.style.setProperty('--text-color', themeParams.button_text_color);
+        }
+    }
+    
+    connectToServer() {
+        this.modules.socket.connect();
+    }
+    
+    async initServiceWorker() {
+        if ('serviceWorker' in navigator && Config.FEATURES.PUSH_NOTIFICATIONS) {
+            try {
+                const registration = await navigator.serviceWorker.register('/service-worker.js');
+                console.log('ServiceWorker registered:', registration);
+                
+                // Request notification permission
+                if (Notification.permission === 'default') {
+                    const permission = await Notification.requestPermission();
+                    console.log('Notification permission:', permission);
+                }
+                
+            } catch (error) {
+                console.error('ServiceWorker registration failed:', error);
+            }
+        }
+    }
+    
+    // Event Handlers
+    handleSocketConnected() {
+        console.log('Socket connected');
+        this.modules.ui.showToast('Connected to game server', { type: 'success' });
+        
+        // Update network status
+        this.updateNetworkStatus(true);
+    }
+    
+    handleSocketDisconnected() {
+        console.log('Socket disconnected');
+        this.modules.ui.showToast('Disconnected from server', { type: 'warning' });
+        
+        // Update network status
+        this.updateNetworkStatus(false);
+    }
+    
+    handleSocketError(error) {
+        console.error('Socket error:', error);
+        this.modules.ui.showToast(`Connection error: ${error.message}`, { type: 'error' });
+    }
+    
+    handleGameStatusUpdate(e) {
+        const gameState = e.detail;
+        
+        // Update UI with game status
+        this.updateGameStatusUI(gameState);
+        
+        // Check if we need to show card selection
+        if (gameState.phase === 'CARD_SELECTION') {
+            this.showCardSelectionIfNeeded();
+        }
+    }
+    
+    handleGameStateChange(e) {
+        const { oldPhase, newPhase, gameId } = e.detail;
+        
+        console.log(`Game phase changed: ${oldPhase} -> ${newPhase}`);
+        
+        // Show notification for phase changes
+        if (newPhase === 'CARD_SELECTION') {
+            this.modules.ui.showToast('Card selection started!', { type: 'info' });
+            this.modules.ui.vibrate([100, 50, 100]);
+        } else if (newPhase === 'ACTIVE') {
+            this.modules.ui.showToast('Game started!', { type: 'success' });
+            this.modules.ui.vibrate([200]);
+        } else if (newPhase === 'ENDED') {
+            this.modules.ui.showToast('Game ended', { type: 'info' });
+        }
+    }
+    
+    handleNumberDrawn(e) {
+        const { number, letter } = e.detail;
+        
+        // Update UI
+        this.modules.ui.showNumberDrawn(number, letter);
+        
+        // Play sound
+        this.modules.audio.play('number_drawn');
+        
+        // Vibrate
+        this.modules.ui.vibrate([100]);
+    }
+    
+    handleGameWinner(e) {
+        const winnerData = e.detail;
+        
+        // Show winner modal
+        this.modules.ui.showWinner(winnerData);
+        
+        // Play win sound
+        this.modules.audio.play('win');
+        
+        // Vibrate
+        this.modules.ui.vibrate([200, 100, 200]);
+    }
+    
+    handleViewChange(e) {
+        const { oldView, newView } = e.detail;
+        console.log(`View changed: ${oldView} -> ${newView}`);
+        
+        // Update page title
+        const titles = {
+            'game': 'Game - Geeze Bingo',
+            'cards': 'My Cards - Geeze Bingo',
+            'numbers': 'Numbers - Geeze Bingo',
+            'wallet': 'Wallet - Geeze Bingo'
+        };
+        
+        document.title = titles[newView] || 'Geeze Bingo';
+    }
+    
+    handleModalOpened(e) {
+        console.log(`Modal opened: ${e.detail.modalId}`);
+    }
+    
+    handleToastShown(e) {
+        console.log(`Toast shown: ${e.detail.id}`, e.detail.message);
+    }
+    
+    handleOnline() {
+        console.log('App is online');
+        this.updateNetworkStatus(true);
+        
+        // Try to reconnect
+        this.connectToServer();
+    }
+    
+    handleOffline() {
+        console.log('App is offline');
+        this.updateNetworkStatus(false);
+        
+        this.modules.ui.showToast('You are offline', { type: 'warning' });
+    }
+    
+    handleBeforeUnload() {
+        // Save app state before leaving
+        this.saveAppState();
+        
+        // Disconnect socket
+        this.modules.socket.disconnect();
+    }
+    
+    // UI Update Methods
+    updateGameStatusUI(gameState) {
+        // Update player count
+        const playersCount = gameState.players?.size || 0;
+        this.updateElement('playersCount', playersCount);
+        
+        // Update cards count
+        const cardsCount = gameState.selectedCards?.size || 0;
+        this.updateElement('cardsCount', `${cardsCount}/${Config.GAME.TOTAL_CARDS}`);
+        
+        // Update numbers count
+        const numbersCount = gameState.drawnNumbers?.length || 0;
+        this.updateElement('numbersCount', numbersCount);
+        
+        // Update prize pool
+        const prizePool = gameState.prizePool || 0;
+        this.updateElement('prizePool', prizePool.toFixed(2));
+        
+        // Update phase indicator
+        this.updatePhaseIndicator(gameState.phase);
+        
+        // Update countdown timer
+        if (gameState.countdown > 0) {
+            this.updateElement('phaseTimer', `${gameState.countdown}s`);
             
-            div.dataset.column = column;
-            grid.appendChild(div);
-        }
-    }
-
-    initCardSelector() {
-        const selector = document.getElementById('cardGridSelector');
-        selector.innerHTML = '';
-        
-        // Create 400 card cells
-        for (let i = 1; i <= 400; i++) {
-            const cell = document.createElement('div');
-            cell.className = 'card-cell';
-            cell.dataset.cardId = i;
-            cell.textContent = i;
-            cell.onclick = () => this.selectCard(i);
-            selector.appendChild(cell);
-        }
-    }
-
-    initEventListeners() {
-        // Auto select cards button
-        document.querySelector('.btn-secondary').addEventListener('click', () => {
-            this.autoSelectCards();
-        });
-        
-        // Bingo claim modal close
-        document.getElementById('bingoClaimModal').addEventListener('click', (e) => {
-            if (e.target.classList.contains('modal')) {
-                this.closeBingoModal();
+            // Update progress bar
+            const progress = (gameState.countdown / Config.GAME.CARD_SELECTION_TIME) * 100;
+            const progressBar = document.getElementById('phaseProgress');
+            if (progressBar) {
+                progressBar.style.width = `${progress}%`;
             }
-        });
-        
-        // Card grid modal close
-        document.getElementById('cardGridModal').addEventListener('click', (e) => {
-            if (e.target.classList.contains('modal')) {
-                this.closeModal();
-            }
-        });
-    }
-
-    loadInitialData() {
-        // Request current game status
-        this.socket.emit('cards:grid:request');
-        
-        // Fetch user balance
-        this.fetchUserBalance();
-    }
-
-    updateUserInfo() {
-        document.getElementById('username').textContent = this.username;
-        document.getElementById('balance').textContent = this.balance.toFixed(2);
-    }
-
-    updateGameStatus(status) {
-        this.gameState = status.state;
-        
-        // Update UI elements
-        document.getElementById('playerCount').textContent = status.playerCount || 0;
-        document.getElementById('cardCount').textContent = `${status.takenCards || 0}/400`;
-        document.getElementById('numberCount').textContent = status.drawnNumbers?.length || 0;
-        
-        // Update state indicator
-        const indicator = document.querySelector('.state-indicator');
-        const stateText = document.getElementById('stateText');
-        
-        switch(status.state) {
-            case 'IDLE':
-                indicator.className = 'state-indicator';
-                stateText.textContent = 'Waiting for next game';
-                break;
-            case 'CARD_SELECTION':
-                indicator.className = 'state-indicator selection';
-                stateText.textContent = 'Card Selection Phase';
-                break;
-            case 'ACTIVE':
-                indicator.className = 'state-indicator active';
-                stateText.textContent = 'Game Active';
-                break;
-            case 'ENDED':
-                indicator.className = 'state-indicator';
-                stateText.textContent = 'Game Ended';
-                break;
         }
     }
-
-    handleGameStateChange(state) {
-        const selectionView = document.getElementById('cardSelectionView');
-        const gameView = document.getElementById('gamePlayView');
-        const winnerView = document.getElementById('winnerAnnouncement');
+    
+    updatePhaseIndicator(phase) {
+        const indicator = document.getElementById('phaseIndicator');
+        if (!indicator) return;
         
-        switch(state.state) {
-            case 'CARD_SELECTION':
-                selectionView.style.display = 'block';
-                gameView.style.display = 'none';
-                winnerView.style.display = 'none';
-                
-                // Reset selection
-                this.selectedCards.clear();
-                this.updateSelectedCount();
-                this.clearCardSelection();
-                break;
-                
-            case 'ACTIVE':
-                selectionView.style.display = 'none';
-                gameView.style.display = 'block';
-                winnerView.style.display = 'none';
-                break;
-                
-            case 'ENDED':
-                selectionView.style.display = 'none';
-                gameView.style.display = 'none';
-                winnerView.style.display = 'block';
-                break;
-                
-            default:
-                selectionView.style.display = 'none';
-                gameView.style.display = 'none';
-                winnerView.style.display = 'none';
-        }
+        // Remove all phase classes
+        indicator.classList.remove('waiting', 'selection', 'active', 'ended');
+        
+        // Add current phase class
+        indicator.classList.add(phase.toLowerCase());
+        
+        // Update text
+        const phaseText = {
+            'IDLE': 'Waiting for game',
+            'CARD_SELECTION': 'Card Selection',
+            'ACTIVE': 'Game Active',
+            'ENDED': 'Game Ended'
+        };
+        
+        this.updateElement('phaseBadge', phaseText[phase] || phase);
     }
-
-    updateCountdown(data) {
-        if (data.phase === 'CARD_SELECTION') {
-            document.getElementById('selectionTime').textContent = data.timeLeft;
-            document.getElementById('countdown').querySelector('.countdown-timer').textContent = data.timeLeft;
-        }
-    }
-
-    handleNumberDrawn(data) {
-        // Add to drawn numbers display
-        const container = document.getElementById('drawnNumbers');
-        const numberDiv = document.createElement('div');
-        numberDiv.className = 'drawn-number recent';
-        numberDiv.textContent = data.number;
-        container.appendChild(numberDiv);
+    
+    updateNetworkStatus(online) {
+        const statusElement = document.getElementById('networkStatus');
+        if (!statusElement) return;
         
-        // Keep only last 20 numbers
-        const numbers = container.children;
-        if (numbers.length > 20) {
-            container.removeChild(numbers[0]);
-        }
-        
-        // Mark number in grid
-        const gridNumber = document.querySelector(`.number-cell[data-number="${data.number}"]`);
-        if (gridNumber) {
-            gridNumber.classList.add('drawn');
-        }
-        
-        // Add to recent numbers
-        this.addRecentNumber(data.number);
-        
-        // Update player cards
-        this.updatePlayerCardMarkings();
-        
-        // Remove recent class after animation
-        setTimeout(() => {
-            numberDiv.classList.remove('recent');
-        }, 1000);
-    }
-
-    addRecentNumber(number) {
-        const container = document.getElementById('recentNumbers');
-        const div = document.createElement('div');
-        div.className = 'recent-number';
-        div.textContent = number;
-        container.insertBefore(div, container.firstChild);
-        
-        // Keep only 10 recent numbers
-        if (container.children.length > 10) {
-            container.removeChild(container.lastChild);
-        }
-    }
-
-    updatePlayerCardMarkings() {
-        // This would update markings on player's cards
-        // In a real implementation, you'd fetch current drawn numbers
-        // and update each card's marked cells
-    }
-
-    handleWinner(data) {
-        const winnerView = document.getElementById('winnerAnnouncement');
-        const message = document.getElementById('winnerMessage');
-        
-        if (data.userId === this.userId) {
-            message.textContent = '🎉 Congratulations! YOU WON! 🎉';
-            this.playWinSound();
+        if (online) {
+            statusElement.textContent = 'Online';
+            statusElement.className = 'network-status online';
+            setTimeout(() => {
+                statusElement.style.display = 'none';
+            }, 3000);
         } else {
-            message.textContent = `Player ${data.username || data.userId} won with ${data.winType}!`;
+            statusElement.textContent = 'Offline';
+            statusElement.className = 'network-status offline';
+            statusElement.style.display = 'block';
+        }
+    }
+    
+    updateElement(id, value) {
+        const element = document.getElementById(id);
+        if (element) {
+            element.textContent = value;
+        }
+    }
+    
+    // Game Actions
+    quickSelectCards() {
+        const gameEngine = this.modules.game;
+        const canSelect = gameEngine.quickSelectCards();
+        
+        if (canSelect) {
+            this.modules.ui.showToast('Cards selected automatically', { type: 'success' });
+        }
+    }
+    
+    showCardSelectionIfNeeded() {
+        const gameEngine = this.modules.game;
+        const playerState = gameEngine.getPlayerState();
+        
+        // Show card selection if player has no cards
+        if (playerState.selectedCards.size === 0) {
+            setTimeout(() => {
+                this.modules.ui.showCardSelection();
+            }, 1000);
+        }
+    }
+    
+    toggleAutoDaub(enabled = null) {
+        const current = this.modules.game.getUIState().autoDaub;
+        const newState = enabled !== null ? enabled : !current;
+        
+        this.modules.game.setAutoDaub(newState);
+        
+        // Update UI
+        const button = document.getElementById('autoDaubBtn');
+        if (button) {
+            button.textContent = newState ? 'Auto Daub: ON' : 'Auto Daub: OFF';
+            button.classList.toggle('active', newState);
         }
         
-        winnerView.style.display = 'flex';
+        this.modules.ui.showToast(
+            `Auto daub ${newState ? 'enabled' : 'disabled'}`,
+            { type: 'info' }
+        );
+    }
+    
+    toggleSound(enabled = null) {
+        const current = this.modules.game.getUIState().soundEnabled;
+        const newState = enabled !== null ? enabled : !current;
         
-        // Start next game countdown
-        let countdown = 10;
-        const countdownEl = document.getElementById('nextGameCountdown');
-        countdownEl.textContent = countdown;
+        this.modules.game.setSoundEnabled(newState);
         
-        const timer = setInterval(() => {
-            countdown--;
-            countdownEl.textContent = countdown;
+        // Update UI
+        const button = document.getElementById('soundToggle');
+        if (button) {
+            const icon = button.querySelector('.sound-icon');
+            if (icon) {
+                icon.textContent = newState ? '🔊' : '🔇';
+            }
+        }
+        
+        // Play test sound if enabling
+        if (newState && !current) {
+            this.modules.audio.play('button_click');
+        }
+    }
+    
+    // App State Management
+    saveAppState() {
+        try {
+            // Save game state
+            const gameState = this.modules.game.getGameState();
+            const playerState = this.modules.game.getPlayerState();
+            const cardState = this.modules.game.getCardState();
             
-            if (countdown <= 0) {
-                clearInterval(timer);
-            }
-        }, 1000);
-    }
-
-    handleGameCancelled(data) {
-        this.showNotification(`Game cancelled: ${data.reason}`);
-        
-        // Auto start new game after delay
-        setTimeout(() => {
-            this.socket.emit('cards:grid:request');
-        }, 5000);
-    }
-
-    updateCardGrid(grid) {
-        // Update card selector
-        grid.forEach(card => {
-            const cell = document.querySelector(`.card-cell[data-card-id="${card.id}"]`);
-            if (cell) {
-                if (card.selected) {
-                    cell.classList.add('taken');
-                    cell.onclick = null;
-                } else {
-                    cell.classList.remove('taken');
-                    cell.onclick = () => this.selectCard(card.id);
+            const appState = {
+                timestamp: Date.now(),
+                gameState: {
+                    phase: gameState.phase,
+                    gameId: gameState.gameId,
+                    drawnNumbers: gameState.drawnNumbers,
+                    countdown: gameState.countdown
+                },
+                playerState: {
+                    selectedCards: Array.from(playerState.selectedCards),
+                    balance: playerState.balance,
+                    stats: playerState.stats
+                },
+                cardState: {
+                    takenCards: Array.from(cardState.takenCards)
                 }
-                
-                if (card.owner === this.userId) {
-                    cell.classList.add('selected');
-                } else {
-                    cell.classList.remove('selected');
-                }
-            }
-        });
-        
-        // Update full grid modal
-        this.updateFullCardGrid(grid);
-    }
-
-    updateFullCardGrid(grid) {
-        const container = document.getElementById('fullCardGrid');
-        container.innerHTML = '';
-        
-        grid.forEach(card => {
-            const cell = document.createElement('div');
-            cell.className = 'grid-card';
-            cell.textContent = card.id;
+            };
             
-            if (card.selected) {
-                if (card.owner === this.userId) {
-                    cell.classList.add('owned');
-                } else {
-                    cell.classList.add('taken');
-                }
+            Config.saveToStorage('app_state', appState);
+            console.log('App state saved');
+            
+        } catch (error) {
+            console.error('Failed to save app state:', error);
+        }
+    }
+    
+    loadAppState() {
+        try {
+            const appState = Config.loadFromStorage('app_state');
+            if (!appState) return;
+            
+            // Check if state is not too old (1 hour)
+            const oneHour = 60 * 60 * 1000;
+            if (Date.now() - appState.timestamp > oneHour) {
+                console.log('App state is too old, ignoring');
+                return;
             }
             
-            container.appendChild(cell);
-        });
-    }
-
-    updatePlayerCards(cardIds) {
-        this.selectedCards = new Set(cardIds);
-        this.updateSelectedCount();
-        
-        // Display player's cards
-        this.displayPlayerCards(cardIds);
-    }
-
-    displayPlayerCards(cardIds) {
-        const container = document.getElementById('playerCards');
-        container.innerHTML = '';
-        
-        cardIds.forEach(cardId => {
-            // In real implementation, fetch card details from server
-            const cardEl = this.createCardElement(cardId);
-            container.appendChild(cardEl);
-        });
-    }
-
-    createCardElement(cardId) {
-        const div = document.createElement('div');
-        div.className = 'bingo-card';
-        div.dataset.cardId = cardId;
-        div.innerHTML = `
-            <div class="bingo-header">
-                <div>B</div>
-                <div>I</div>
-                <div>N</div>
-                <div>G</div>
-                <div>O</div>
-            </div>
-            <div class="card-content">
-                <!-- Card numbers would be loaded here -->
-                Card #${cardId}
-            </div>
-        `;
-        return div;
-    }
-
-    handleCardSelected(data) {
-        if (data.userId === this.userId) {
-            this.selectedCards.add(data.cardId);
-            this.updateSelectedCount();
-        }
-        
-        // Update card in grid
-        const cell = document.querySelector(`.card-cell[data-card-id="${data.cardId}"]`);
-        if (cell) {
-            cell.classList.add('taken');
-            cell.onclick = null;
+            console.log('Loaded app state from:', new Date(appState.timestamp).toLocaleString());
+            return appState;
+            
+        } catch (error) {
+            console.error('Failed to load app state:', error);
+            return null;
         }
     }
-
-    selectCard(cardId) {
-        if (this.selectedCards.size >= 4) {
-            this.showError('Maximum 4 cards allowed');
-            return;
+    
+    // UI Methods
+    showLoadingScreen() {
+        const loadingScreen = document.getElementById('loadingScreen');
+        const appContainer = document.getElementById('appContainer');
+        
+        if (loadingScreen) {
+            loadingScreen.style.display = 'flex';
         }
         
-        if (this.selectedCards.has(cardId)) {
-            this.showError('Card already selected');
-            return;
+        if (appContainer) {
+            appContainer.style.display = 'none';
+        }
+    }
+    
+    hideLoadingScreen() {
+        const loadingScreen = document.getElementById('loadingScreen');
+        const appContainer = document.getElementById('appContainer');
+        
+        if (loadingScreen) {
+            loadingScreen.style.display = 'none';
         }
         
-        this.socket.emit('card:select', {
-            userId: this.userId,
-            cardId: cardId
-        });
+        if (appContainer) {
+            appContainer.style.display = 'block';
+        }
     }
-
-    autoSelectCards() {
-        if (this.gameState !== 'CARD_SELECTION') {
-            this.showError('Not in card selection phase');
-            return;
+    
+    showErrorScreen(error) {
+        const loadingScreen = document.getElementById('loadingScreen');
+        if (loadingScreen) {
+            loadingScreen.innerHTML = `
+                <div class="error-screen">
+                    <div class="error-icon">❌</div>
+                    <h2 class="error-title">Failed to Load</h2>
+                    <p class="error-message">${error.message || 'Unknown error'}</p>
+                    <button class="btn-primary" onclick="location.reload()">
+                        Retry
+                    </button>
+                </div>
+            `;
+        }
+    }
+    
+    showWelcomeMessage() {
+        const username = Config.getUsername();
+        const isFirstVisit = !Config.loadFromStorage('has_visited');
+        
+        if (isFirstVisit) {
+            this.modules.ui.showToast(`Welcome to Geeze Bingo, ${username}! 🎉`, {
+                type: 'success',
+                duration: 5000
+            });
+            
+            Config.saveToStorage('has_visited', true);
+        } else {
+            this.modules.ui.showToast(`Welcome back, ${username}!`, {
+                type: 'info',
+                duration: 3000
+            });
+        }
+    }
+    
+    // Public API Methods
+    openCardSelection() {
+        return this.modules.ui.showCardSelection();
+    }
+    
+    closeCardSelection() {
+        return this.modules.ui.hideModal('cardSelectionModal');
+    }
+    
+    claimBingo(cardId = null) {
+        return this.modules.ui.showBingoClaim(cardId);
+    }
+    
+    closeBingoClaim() {
+        return this.modules.ui.hideModal('bingoClaimModal');
+    }
+    
+    showWalletView() {
+        this.modules.ui.switchView('wallet');
+    }
+    
+    showDepositModal() {
+        this.modules.ui.showModal('depositModal');
+    }
+    
+    showWithdrawModal() {
+        this.modules.ui.showModal('withdrawModal');
+    }
+    
+    showRulesModal() {
+        this.modules.ui.showModal('rulesModal');
+    }
+    
+    closeRulesModal() {
+        this.modules.ui.hideModal('rulesModal');
+    }
+    
+    // Debug methods
+    debug() {
+        console.group('Bingo App Debug Info');
+        
+        console.log('App initialized:', this.initialized);
+        console.log('Config:', Config);
+        console.log('Modules:', Object.keys(this.modules));
+        
+        if (this.modules.game) {
+            console.log('Game State:', this.modules.game.getGameState());
+            console.log('Player State:', this.modules.game.getPlayerState());
         }
         
-        // Find available cards
-        const availableCards = [];
-        const cardCells = document.querySelectorAll('.card-cell:not(.taken)');
-        
-        cardCells.forEach(cell => {
-            if (availableCards.length < 4) {
-                const cardId = parseInt(cell.dataset.cardId);
-                availableCards.push(cardId);
-            }
-        });
-        
-        // Select cards
-        availableCards.forEach(cardId => {
-            this.selectCard(cardId);
-        });
-    }
-
-    confirmSelection() {
-        if (this.selectedCards.size === 0) {
-            this.showError('Please select at least one card');
-            return;
+        if (this.modules.socket) {
+            console.log('Socket State:', this.modules.socket.getConnectionState());
         }
         
-        this.showNotification('Cards confirmed! Ready for game start.');
-    }
-
-    claimBingo() {
-        if (this.selectedCards.size === 0) {
-            this.showError('You have no cards');
-            return;
+        if (this.modules.ui) {
+            console.log('UI State:', this.modules.ui.getCurrentView());
         }
         
-        // Open bingo claim modal
-        this.openBingoClaimModal();
-    }
-
-    openBingoClaimModal() {
-        const modal = document.getElementById('bingoClaimModal');
-        modal.classList.add('active');
-        
-        // Reset pattern selection
-        this.selectedPattern = null;
-        document.querySelectorAll('.pattern').forEach(p => {
-            p.classList.remove('selected');
-        });
-        
-        // For now, use first selected card
-        const cardId = Array.from(this.selectedCards)[0];
-        this.claimingCardId = cardId;
-        document.getElementById('selectedCardId').textContent = cardId;
-    }
-
-    closeBingoModal() {
-        document.getElementById('bingoClaimModal').classList.remove('active');
-        this.selectedPattern = null;
-        this.claimingCardId = null;
-    }
-
-    selectPattern(pattern) {
-        this.selectedPattern = pattern;
-        
-        document.querySelectorAll('.pattern').forEach(p => {
-            p.classList.remove('selected');
-        });
-        
-        document.querySelector(`.pattern[data-pattern="${pattern}"]`).classList.add('selected');
-    }
-
-    submitBingoClaim() {
-        if (!this.selectedPattern || !this.claimingCardId) {
-            this.showError('Please select a winning pattern');
-            return;
-        }
-        
-        this.socket.emit('bingo:claim', {
-            userId: this.userId,
-            cardId: this.claimingCardId,
-            pattern: this.selectedPattern
-        });
-        
-        this.closeBingoModal();
-    }
-
-    viewCardGrid() {
-        document.getElementById('cardGridModal').classList.add('active');
-    }
-
-    closeModal() {
-        document.getElementById('cardGridModal').classList.remove('active');
-    }
-
-    updateSelectedCount() {
-        document.getElementById('selectedCount').textContent = this.selectedCards.size;
-    }
-
-    clearCardSelection() {
-        document.querySelectorAll('.card-cell').forEach(cell => {
-            cell.classList.remove('selected');
-        });
-    }
-
-    fetchUserBalance() {
-        // In real implementation, fetch from API
-        this.balance = 1000; // Example balance
-        this.updateUserInfo();
-    }
-
-    playWinSound() {
-        // Play win sound if available
-        const audio = new Audio('assets/sounds/win.mp3');
-        audio.play().catch(e => console.log('Audio play failed:', e));
-    }
-
-    showError(message) {
-        // Simple error notification
-        alert(message);
-    }
-
-    showNotification(message) {
-        // Simple notification
-        console.log('Notification:', message);
-        // In real implementation, use toast notification
+        console.groupEnd();
     }
 }
 
-// Initialize app when page loads
-window.addEventListener('DOMContentLoaded', () => {
-    window.bingoApp = new BingoApp();
+// Global app instance
+let appInstance = null;
+
+function getApp() {
+    if (!appInstance) {
+        appInstance = new BingoApp();
+    }
+    return appInstance;
+}
+
+// Initialize app when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    // Initialize app
+    window.app = getApp();
+    
+    // Make app globally available
+    window.BingoApp = BingoApp;
+    window.getApp = getApp;
+    
+    // Global helper functions
+    window.openCardSelection = () => app.openCardSelection();
+    window.closeCardSelection = () => app.closeCardSelection();
+    window.claimBingo = (cardId) => app.claimBingo(cardId);
+    window.closeBingoClaim = () => app.closeBingoClaim();
+    window.showWalletView = () => app.showWalletView();
+    window.showDepositModal = () => app.showDepositModal();
+    window.showWithdrawModal = () => app.showWithdrawModal();
+    window.showRulesModal = () => app.showRulesModal();
+    window.closeRulesModal = () => app.closeRulesModal();
+    window.toggleAutoDaub = (enabled) => app.toggleAutoDaub(enabled);
+    window.toggleSound = (enabled) => app.toggleSound(enabled);
+    
+    console.log('Bingo App initialized');
 });
 
-// Global functions for HTML onclick handlers
-function confirmSelection() {
-    window.bingoApp.confirmSelection();
+// Handle service worker messages
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', (event) => {
+        const { type, data } = event.data;
+        
+        switch (type) {
+            case 'NEW_GAME':
+                app.modules.ui.showToast('New game starting soon!', { type: 'info' });
+                break;
+                
+            case 'NUMBER_DRAWN':
+                if (data) {
+                    app.modules.ui.showNumberDrawn(data.number, data.letter);
+                }
+                break;
+                
+            case 'WINNER':
+                if (data) {
+                    app.modules.ui.showWinner(data);
+                }
+                break;
+        }
+    });
 }
 
-function autoSelectCards() {
-    window.bingoApp.autoSelectCards();
-}
+// Handle app install
+window.addEventListener('beforeinstallprompt', (e) => {
+    // Prevent Chrome 67 and earlier from automatically showing the prompt
+    e.preventDefault();
+    
+    // Stash the event so it can be triggered later
+    window.deferredPrompt = e;
+    
+    // Show install button
+    const installButton = document.getElementById('installButton');
+    if (installButton) {
+        installButton.style.display = 'block';
+        installButton.addEventListener('click', () => {
+            // Show the install prompt
+            e.prompt();
+            
+            // Wait for the user to respond to the prompt
+            e.userChoice.then((choiceResult) => {
+                if (choiceResult.outcome === 'accepted') {
+                    console.log('User accepted install');
+                } else {
+                    console.log('User dismissed install');
+                }
+                window.deferredPrompt = null;
+            });
+        });
+    }
+});
 
-function claimBingo() {
-    window.bingoApp.claimBingo();
-}
+// Handle app installed
+window.addEventListener('appinstalled', () => {
+    console.log('App installed successfully');
+    window.deferredPrompt = null;
+    
+    // Hide install button
+    const installButton = document.getElementById('installButton');
+    if (installButton) {
+        installButton.style.display = 'none';
+    }
+});
 
-function viewCardGrid() {
-    window.bingoApp.viewCardGrid();
-}
-
-function closeModal() {
-    window.bingoApp.closeModal();
-}
-
-function closeBingoModal() {
-    window.bingoApp.closeBingoModal();
-}
-
-function selectPattern(pattern) {
-    window.bingoApp.selectPattern(pattern);
-}
-
-function submitBingoClaim() {
-    window.bingoApp.submitBingoClaim();
+// Export for module systems
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { BingoApp, getApp };
 }
