@@ -1,0 +1,45 @@
+<div class="modal-overlay" id="winnerModal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">🎉 Bingo Winner! 🎉</h3>
+            <button class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="winner-details">
+                <div class="winner-avatar-large">
+                    <img src="" alt="Winner" id="modalWinnerAvatar">
+                </div>
+                <h4 id="modalWinnerName">Player Name</h4>
+                <p class="winner-message">Congratulations! You got Bingo!</p>
+                
+                <div class="winning-card-display">
+                    <h5>Winning Card: <span id="modalWinningCard">#1</span></h5>
+                    <div id="modalCardPattern"></div>
+                </div>
+                
+                <div class="winner-stats-grid">
+                    <div class="stat-item">
+                        <span class="stat-label">Numbers Called</span>
+                        <span class="stat-value" id="modalNumbersCalled">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Game Time</span>
+                        <span class="stat-value" id="modalGameTime">0:00</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Prize</span>
+                        <span class="stat-value">🏆</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button id="modalShareBtn" class="btn btn-primary">
+                <span class="icon">📤</span> Share Victory
+            </button>
+            <button id="modalPlayAgainBtn" class="btn btn-success">
+                <span class="icon">🔄</span> Play Again
+            </button>
+        </div>
+    </div>
+</div>
