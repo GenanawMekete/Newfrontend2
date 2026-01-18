@@ -1,194 +1,154 @@
-/* Large screens (desktops) */
-@media (min-width: 1200px) {
-    .app-container {
-        max-width: 1200px;
-    }
-    
-    .cards-container {
-        grid-template-columns: repeat(4, 1fr);
-    }
-}
+/* Mobile First Approach */
 
-/* Tablets and smaller desktops */
-@media (max-width: 1199px) and (min-width: 768px) {
-    .cards-container {
-        grid-template-columns: repeat(3, 1fr);
+/* Extra Small Devices (phones, less than 576px) */
+@media (max-width: 575.98px) {
+    .cards-grid {
+        grid-template-columns: repeat(auto-fill, minmax(45px, 1fr));
+        gap: 0.4rem;
     }
     
-    .player-cards {
-        grid-template-columns: repeat(2, 1fr);
+    .card-number {
+        font-size: 0.875rem;
     }
     
-    .numbers-container {
-        grid-template-columns: repeat(9, 1fr);
-    }
-}
-
-/* Mobile devices */
-@media (max-width: 767px) {
-    .cards-container {
-        grid-template-columns: 1fr;
-    }
-    
-    .player-cards {
-        grid-template-columns: 1fr;
-    }
-    
-    .numbers-container {
-        grid-template-columns: repeat(8, 1fr);
-        gap: 6px;
-    }
-    
-    .grid-number {
-        font-size: 0.9rem;
-    }
-    
-    .game-info {
-        gap: 10px;
-    }
-    
-    .timer {
-        font-size: 1rem;
-        min-width: 55px;
-    }
-    
-    .winner-title {
-        font-size: 1.8rem;
-    }
-    
-    .winner-stats {
-        grid-template-columns: 1fr;
-    }
-    
-    .selection-controls, .game-controls {
+    .selection-controls {
         flex-direction: column;
     }
     
     .btn {
         width: 100%;
     }
-}
-
-/* Very small mobile devices */
-@media (max-width: 480px) {
-    .app-header {
+    
+    .footer-content {
         flex-direction: column;
-        gap: 10px;
-        padding: 10px 15px;
+        gap: 1rem;
+        text-align: center;
     }
     
-    .logo-container {
-        width: 100%;
+    .game-stats {
         justify-content: center;
     }
     
-    .game-info {
-        width: 100%;
-        justify-content: space-between;
+    .modal-content {
+        margin: 0.5rem;
     }
     
-    .main-content {
-        padding: 10px;
+    .modal-footer {
+        flex-direction: column;
     }
     
-    .screen-header h2 {
-        font-size: 1.3rem;
+    .number-grid {
+        grid-template-columns: repeat(8, 1fr);
     }
-    
-    .subtitle {
-        font-size: 0.9rem;
-    }
-    
-    .numbers-container {
-        grid-template-columns: repeat(6, 1fr);
-        gap: 4px;
-    }
-    
-    .card-numbers {
-        gap: 4px;
-    }
-    
-    .card-number {
-        font-size: 0.85rem;
+}
+
+/* Small Devices (tablets, 576px and up) */
+@media (min-width: 576px) {
+    .cards-grid {
+        grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
     }
     
     .modal-content {
-        padding: 20px 15px;
-    }
-    
-    .modal-title {
-        font-size: 1.2rem;
+        margin: 1rem;
     }
 }
 
-/* Landscape mode on mobile */
-@media (max-height: 600px) and (orientation: landscape) {
-    .app-header {
-        padding: 8px 15px;
+/* Medium Devices (tablets landscape, 768px and up) */
+@media (min-width: 768px) {
+    .app-container {
+        max-width: 768px;
+        margin: 0 auto;
+    }
+    
+    .cards-grid {
+        grid-template-columns: repeat(auto-fill, minmax(55px, 1fr));
+    }
+    
+    .bingo-card {
+        gap: 0.75rem;
+    }
+    
+    .number-grid {
+        grid-template-columns: repeat(10, 1fr);
+    }
+}
+
+/* Large Devices (desktops, 992px and up) */
+@media (min-width: 992px) {
+    .app-container {
+        max-width: 992px;
+    }
+    
+    .cards-grid {
+        grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
     }
     
     .main-content {
-        padding: 10px;
+        display: grid;
+        grid-template-columns: 1fr 2fr;
+        gap: 1.5rem;
     }
     
-    .cards-container {
-        grid-template-columns: repeat(2, 1fr);
-    }
-    
-    .player-cards {
-        grid-template-columns: repeat(2, 1fr);
-    }
-    
-    .screen-header h2 {
-        font-size: 1.2rem;
-        margin-bottom: 2px;
-    }
-    
-    .subtitle {
-        font-size: 0.85rem;
+    .card-selection-section {
+        margin-bottom: 0;
     }
 }
 
-/* High-resolution displays */
-@media (min-resolution: 192dpi) {
-    .logo {
-        width: 60px;
-        height: 60px;
+/* Extra Large Devices (large desktops, 1200px and up) */
+@media (min-width: 1200px) {
+    .app-container {
+        max-width: 1200px;
     }
     
-    .winner-avatar {
-        width: 100px;
-        height: 100px;
+    .cards-grid {
+        grid-template-columns: repeat(auto-fill, minmax(65px, 1fr));
     }
 }
 
-/* Dark mode support */
+/* Landscape Orientation */
+@media (orientation: landscape) and (max-height: 600px) {
+    .cards-grid-container {
+        max-height: 40vh;
+    }
+    
+    .main-content {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+/* High DPI Screens */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .card-number,
+    .bingo-cell,
+    .number-cell {
+        border-width: 1px;
+    }
+}
+
+/* Dark Mode Support */
 @media (prefers-color-scheme: dark) {
     :root {
-        --background-color: #1a1a2e;
-        --card-background: #16213e;
-        --text-color: #e6e6e6;
-        --text-light: #a0a0a0;
-        --border-color: #2d4059;
-        --shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        --background-dark: #0a0a0a;
+        --background-light: #1a1a1a;
+        --border-color: #333;
+    }
+}
+
+/* Print Styles */
+@media print {
+    .app-header,
+    .app-footer,
+    .selection-controls,
+    .search-bar {
+        display: none;
     }
     
-    .grid-number, .card-number {
-        background: #2d4059;
-        color: #e6e6e6;
+    .cards-grid-container {
+        max-height: none;
+        overflow: visible;
     }
     
-    .btn-secondary {
-        background-color: var(--card-background);
-        color: var(--text-color);
-    }
-    
-    .winner-stats {
-        background: #2d4059;
-    }
-    
-    .mobile-nav {
-        background: var(--card-background);
-        border-top-color: var(--border-color);
+    .card-preview {
+        break-inside: avoid;
     }
 }
