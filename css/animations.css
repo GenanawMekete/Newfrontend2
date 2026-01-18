@@ -1,3 +1,4 @@
+/* Fade Animations */
 @keyframes fadeIn {
     from {
         opacity: 0;
@@ -7,10 +8,19 @@
     }
 }
 
-@keyframes slideUp {
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
+}
+
+@keyframes fadeInUp {
     from {
         opacity: 0;
-        transform: translateY(30px);
+        transform: translateY(20px);
     }
     to {
         opacity: 1;
@@ -18,21 +28,65 @@
     }
 }
 
-@keyframes pulse {
-    0% {
-        transform: scale(1);
-        box-shadow: 0 0 0 0 rgba(74, 111, 165, 0.7);
+.fade-in {
+    animation: fadeIn var(--transition-speed) ease-out;
+}
+
+.fade-out {
+    animation: fadeOut var(--transition-speed) ease-out;
+}
+
+.fade-in-up {
+    animation: fadeInUp 0.5s ease-out;
+}
+
+/* Slide Animations */
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
     }
-    50% {
-        transform: scale(1.05);
-        box-shadow: 0 0 0 10px rgba(74, 111, 165, 0);
-    }
-    100% {
-        transform: scale(1);
-        box-shadow: 0 0 0 0 rgba(74, 111, 165, 0);
+    to {
+        transform: translateX(0);
+        opacity: 1;
     }
 }
 
+@keyframes slideInLeft {
+    from {
+        transform: translateX(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideInUp {
+    from {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.slide-in-right {
+    animation: slideInRight 0.4s ease-out;
+}
+
+.slide-in-left {
+    animation: slideInLeft 0.4s ease-out;
+}
+
+.slide-in-up {
+    animation: slideInUp 0.4s ease-out;
+}
+
+/* Bounce Animations */
 @keyframes bounce {
     0%, 20%, 50%, 80%, 100% {
         transform: translateY(0);
@@ -45,6 +99,65 @@
     }
 }
 
+.bounce {
+    animation: bounce 1s ease infinite;
+}
+
+@keyframes bounceIn {
+    0% {
+        transform: scale(0.3);
+        opacity: 0;
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    70% {
+        transform: scale(0.9);
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.bounce-in {
+    animation: bounceIn 0.5s ease-out;
+}
+
+/* Pulse Animations */
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(0, 136, 204, 0.7);
+    }
+    70% {
+        transform: scale(1.05);
+        box-shadow: 0 0 0 10px rgba(0, 136, 204, 0);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(0, 136, 204, 0);
+    }
+}
+
+.pulse {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse-glow {
+    0%, 100% {
+        box-shadow: 0 0 5px var(--primary-color);
+    }
+    50% {
+        box-shadow: 0 0 20px var(--primary-color), 0 0 30px var(--primary-color);
+    }
+}
+
+.pulse-glow {
+    animation: pulse-glow 1.5s ease-in-out infinite;
+}
+
+/* Shake Animation */
 @keyframes shake {
     0%, 100% {
         transform: translateX(0);
@@ -57,147 +170,262 @@
     }
 }
 
-@keyframes confetti {
+.shake {
+    animation: shake 0.5s ease-in-out;
+}
+
+/* Spin Animation */
+@keyframes spin {
     0% {
-        transform: translateY(-100px) rotate(0deg);
-        opacity: 1;
+        transform: rotate(0deg);
     }
     100% {
-        transform: translateY(1000px) rotate(720deg);
-        opacity: 0;
+        transform: rotate(360deg);
     }
 }
 
-@keyframes cardFlip {
+.spin {
+    animation: spin 1s linear infinite;
+}
+
+/* Flip Animation */
+@keyframes flip {
     0% {
-        transform: rotateY(0);
+        transform: perspective(400px) rotateY(0);
     }
     50% {
-        transform: rotateY(90deg);
+        transform: perspective(400px) rotateY(180deg);
     }
     100% {
-        transform: rotateY(0);
+        transform: perspective(400px) rotateY(360deg);
     }
 }
 
-@keyframes numberReveal {
+.flip {
+    animation: flip 1s ease-in-out;
+}
+
+/* Card Draw Animation */
+@keyframes cardDraw {
     0% {
-        transform: scale(0);
+        transform: translateY(-50px) rotate(-5deg);
         opacity: 0;
+    }
+    100% {
+        transform: translateY(0) rotate(0);
+        opacity: 1;
+    }
+}
+
+.card-draw {
+    animation: cardDraw 0.6s ease-out;
+}
+
+/* Number Call Animation */
+@keyframes numberCall {
+    0% {
+        transform: scale(0.5) rotate(-180deg);
+        opacity: 0;
+    }
+    100% {
+        transform: scale(1) rotate(0);
+        opacity: 1;
+    }
+}
+
+.number-call {
+    animation: numberCall 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* Winning Animation */
+@keyframes winCelebration {
+    0% {
+        transform: scale(1);
     }
     50% {
         transform: scale(1.2);
-        opacity: 1;
     }
     100% {
         transform: scale(1);
+    }
+}
+
+.win-celebration {
+    animation: winCelebration 0.5s ease-in-out 3;
+}
+
+@keyframes confettiFall {
+    0% {
+        transform: translateY(-100vh) rotate(0deg);
         opacity: 1;
     }
+    100% {
+        transform: translateY(100vh) rotate(360deg);
+        opacity: 0;
+    }
+}
+
+.confetti {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background-color: #f0f;
+    animation: confettiFall 3s linear infinite;
+}
+
+/* Loading Bar Animation */
+@keyframes loadingBar {
+    0% {
+        width: 0%;
+    }
+    50% {
+        width: 70%;
+    }
+    100% {
+        width: 100%;
+    }
+}
+
+.loading-bar {
+    height: 4px;
+    background-color: var(--primary-color);
+    animation: loadingBar 2s ease-in-out infinite;
+}
+
+/* Ripple Effect */
+@keyframes ripple {
+    0% {
+        transform: scale(0);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(4);
+        opacity: 0;
+    }
+}
+
+.ripple {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.6);
+    animation: ripple 0.6s linear;
+}
+
+/* Staggered Animation Delays */
+.stagger-delay-1 { animation-delay: 0.1s; }
+.stagger-delay-2 { animation-delay: 0.2s; }
+.stagger-delay-3 { animation-delay: 0.3s; }
+.stagger-delay-4 { animation-delay: 0.4s; }
+.stagger-delay-5 { animation-delay: 0.5s; }
+
+/* Hover Effects */
+.hover-lift {
+    transition: transform var(--transition-speed);
+}
+
+.hover-lift:hover {
+    transform: translateY(-4px);
+}
+
+.hover-glow {
+    transition: box-shadow var(--transition-speed);
+}
+
+.hover-glow:hover {
+    box-shadow: 0 0 15px rgba(0, 136, 204, 0.5);
+}
+
+/* Attention Seekers */
+@keyframes tada {
+    0% {
+        transform: scale(1);
+    }
+    10%, 20% {
+        transform: scale(0.9) rotate(-3deg);
+    }
+    30%, 50%, 70%, 90% {
+        transform: scale(1.1) rotate(3deg);
+    }
+    40%, 60%, 80% {
+        transform: scale(1.1) rotate(-3deg);
+    }
+    100% {
+        transform: scale(1) rotate(0);
+    }
+}
+
+.tada {
+    animation: tada 1s ease-in-out;
+}
+
+/* Entrance Animations */
+.entrance-scale {
+    animation: bounceIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.entrance-slide {
+    animation: slideInUp 0.5s ease-out;
+}
+
+.entrance-rotate {
+    animation: flip 0.8s ease-out;
+}
+
+/* Exit Animations */
+.exit-scale {
+    animation: bounceIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) reverse;
+}
+
+.exit-slide {
+    animation: slideInUp 0.5s ease-out reverse;
+}
+
+/* Continuous Animations */
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+.float {
+    animation: float 3s ease-in-out infinite;
 }
 
 @keyframes glow {
     0%, 100% {
-        box-shadow: 0 0 5px rgba(255, 107, 107, 0.5);
+        opacity: 1;
     }
     50% {
-        box-shadow: 0 0 20px rgba(255, 107, 107, 0.8);
+        opacity: 0.5;
     }
-}
-
-/* Animation Classes */
-.fade-in {
-    animation: fadeIn 0.5s ease;
-}
-
-.slide-up {
-    animation: slideUp 0.5s ease;
-}
-
-.bounce {
-    animation: bounce 1s;
-}
-
-.shake {
-    animation: shake 0.5s;
-}
-
-.pulse {
-    animation: pulse 2s infinite;
 }
 
 .glow {
-    animation: glow 2s infinite;
+    animation: glow 2s ease-in-out infinite;
 }
 
-.card-flip {
-    animation: cardFlip 0.6s ease;
-}
-
-.number-reveal {
-    animation: numberReveal 0.5s ease;
-}
-
-/* Confetti Animation */
-.confetti {
-    position: fixed;
-    width: 15px;
-    height: 15px;
-    background-color: #f00;
-    top: -10px;
-    z-index: 9999;
+/* Utility Classes */
+.animate-on-scroll {
     opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
 }
 
-.confetti:nth-child(1) {
-    background-color: #f00;
-    left: 10%;
-    animation: confetti 5s ease 0s infinite;
+.animate-on-scroll.visible {
+    opacity: 1;
+    transform: translateY(0);
 }
 
-.confetti:nth-child(2) {
-    background-color: #0f0;
-    left: 20%;
-    animation: confetti 5s ease 0.5s infinite;
-}
+.delay-100 { animation-delay: 100ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-400 { animation-delay: 400ms; }
+.delay-500 { animation-delay: 500ms; }
 
-.confetti:nth-child(3) {
-    background-color: #00f;
-    left: 30%;
-    animation: confetti 5s ease 1s infinite;
-}
-
-.confetti:nth-child(4) {
-    background-color: #ff0;
-    left: 40%;
-    animation: confetti 5s ease 1.5s infinite;
-}
-
-.confetti:nth-child(5) {
-    background-color: #f0f;
-    left: 50%;
-    animation: confetti 5s ease 2s infinite;
-}
-
-.confetti:nth-child(6) {
-    background-color: #0ff;
-    left: 60%;
-    animation: confetti 5s ease 2.5s infinite;
-}
-
-.confetti:nth-child(7) {
-    background-color: #ff8800;
-    left: 70%;
-    animation: confetti 5s ease 3s infinite;
-}
-
-.confetti:nth-child(8) {
-    background-color: #8800ff;
-    left: 80%;
-    animation: confetti 5s ease 3.5s infinite;
-}
-
-.confetti:nth-child(9) {
-    background-color: #00ff88;
-    left: 90%;
-    animation: confetti 5s ease 4s infinite;
-}
+.duration-fast { animation-duration: 0.3s; }
+.duration-normal { animation-duration: 0.6s; }
+.duration-slow { animation-duration: 1s; }
+.duration-slower { animation-duration: 2s; }
