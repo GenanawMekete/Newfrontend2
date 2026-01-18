@@ -1,147 +1,302 @@
+// Socket Manager - Handles WebSocket connections for real-time updates
 import { CONFIG } from './config.js';
 
 export class SocketManager {
-    constructor(app) {
-        this.app = app;
+    constructor() {
         this.socket = null;
         this.reconnectAttempts = 0;
+        this.maxReconnectAttempts = CONFIG.WS_MAX_RETRIES;
+        this.reconnectDelay = CONFIG.WS_RECONNECT_DELAY;
         this.isConnected = false;
-        this.messageQueue = [];
+        this.eventListeners = new Map();
+        this.pendingMessages = [];
     }
     
-    connect() {
-        try {
-            this.socket = new WebSocket(CONFIG.SERVER_URL);
-            
-            this.socket.onopen = () => {
-                console.log('WebSocket connected');
-                this.isConnected = true;
-                this.reconnectAttempts = 0;
-                this.processMessageQueue();
-                
-                // Send connection info
-                this.send({
-                    type: 'player_join',
-                    playerId: this.app.playerId
-                });
-            };
-            
-            this.socket.onmessage = (event) => {
-                this.handleMessage(JSON.parse(event.data));
-            };
-            
-            this.socket.onclose = () => {
-                console.log('WebSocket disconnected');
-                this.isConnected = false;
-                this.handleDisconnection();
-            };
-            
-            this.socket.onerror = (error) => {
-                console.error('WebSocket error:', error);
-            };
-            
-        } catch (error) {
-            console.error('Failed to connect:', error);
-            this.handleDisconnection();
+    // Connect to WebSocket server
+    async connect() {
+        if (this.socket && this.isConnected) {
+            console.log('Already connected to WebSocket');
+            return;
         }
-    }
-    
-    handleDisconnection() {
-        // Try to reconnect
-        if (this.reconnectAttempts < CONFIG.MAX_RECONNECT_ATTEMPTS) {
-            this.reconnectAttempts++;
-            const delay = CONFIG.RECONNECT_INTERVAL * this.reconnectAttempts;
-            
-            console.log(`Reconnecting in ${delay/1000} seconds... (attempt ${this.reconnectAttempts})`);
-            
-            setTimeout(() => {
-                this.connect();
-            }, delay);
-        } else {
-            console.error('Max reconnection attempts reached');
-            this.app.uiManager.showNotification('Connection lost. Please refresh.', 'error');
-        }
-    }
-    
-    send(message) {
-        if (this.isConnected && this.socket) {
-            this.socket.send(JSON.stringify(message));
-        } else {
-            // Queue message for when connection is restored
-            this.messageQueue.push(message);
-            console.log('Message queued:', message);
-        }
-    }
-    
-    processMessageQueue() {
-        while (this.messageQueue.length > 0) {
-            const message = this.messageQueue.shift();
-            this.socket.send(JSON.stringify(message));
-        }
-    }
-    
-    handleMessage(data) {
-        console.log('Received message:', data);
         
-        switch(data.type) {
-            case 'game_state':
-                this.handleGameState(data);
-                break;
+        return new Promise((resolve, reject) => {
+            try {
+                this.socket = new WebSocket(CONFIG.WS_URL);
                 
-            case 'player_count':
-                this.app.updatePlayersCount(data.count);
-                break;
+                this.socket.onopen = () => {
+                    console.log('WebSocket connected');
+                    this.isConnected = true;
+                    this.reconnectAttempts = 0;
+                    
+                    // Send pending messages
+                    this.flushPendingMessages();
+                    
+                    // Trigger connection event
+                    this.emit('connected');
+                    
+                    resolve();
+                };
                 
-            case 'card_selection_result':
-                this.handleCardSelectionResult(data);
-                break;
+                this.socket.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        this.handleMessage(data);
+                    } catch (error) {
+                        console.error('Failed to parse WebSocket message:', error);
+                    }
+                };
                 
-            case 'game_start':
-                this.app.startGame(data);
-                break;
+                this.socket.onclose = (event) => {
+                    console.log('WebSocket disconnected:', event.code, event.reason);
+                    this.isConnected = false;
+                    this.emit('disconnected', { code: event.code, reason: event.reason });
+                    
+                    // Attempt reconnection
+                    if (event.code !== 1000) { // Don't reconnect on normal closure
+                        this.attemptReconnect();
+                    }
+                };
                 
+                this.socket.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                    this.emit('error', error);
+                    reject(error);
+                };
+                
+            } catch (error) {
+                console.error('Failed to create WebSocket connection:', error);
+                reject(error);
+            }
+        });
+    }
+    
+    // Disconnect from WebSocket server
+    disconnect() {
+        if (this.socket) {
+            this.socket.close(1000, 'User initiated disconnect');
+            this.socket = null;
+            this.isConnected = false;
+        }
+    }
+    
+    // Send message through WebSocket
+    send(event, data = {}) {
+        const message = {
+            event,
+            data,
+            timestamp: Date.now()
+        };
+        
+        if (this.isConnected && this.socket) {
+            try {
+                this.socket.send(JSON.stringify(message));
+            } catch (error) {
+                console.error('Failed to send WebSocket message:', error);
+                // Queue message for later
+                this.pendingMessages.push(message);
+            }
+        } else {
+            // Queue message for when connection is established
+            this.pendingMessages.push(message);
+        }
+    }
+    
+    // Send pending messages
+    flushPendingMessages() {
+        while (this.pendingMessages.length > 0) {
+            const message = this.pendingMessages.shift();
+            if (this.socket && this.isConnected) {
+                try {
+                    this.socket.send(JSON.stringify(message));
+                } catch (error) {
+                    console.error('Failed to send pending message:', error);
+                    // Re-add to pending if fails
+                    this.pendingMessages.unshift(message);
+                    break;
+                }
+            } else {
+                // Re-add to pending if not connected
+                this.pendingMessages.unshift(message);
+                break;
+            }
+        }
+    }
+    
+    // Handle incoming messages
+    handleMessage(message) {
+        const { event, data } = message;
+        
+        // Emit event to listeners
+        this.emit(event, data);
+        
+        // Handle specific game events
+        switch (event) {
             case 'number_drawn':
-                this.app.handleNumberDrawn(data.number);
+                this.handleNumberDrawn(data);
                 break;
                 
-            case 'bingo_validated':
-                this.app.showWinner(data.winner);
+            case 'game_started':
+                this.handleGameStarted(data);
                 break;
                 
-            case 'error':
-                this.app.uiManager.showNotification(data.message, 'error');
+            case 'game_ended':
+                this.handleGameEnded(data);
                 break;
                 
             case 'player_joined':
-                this.app.uiManager.showNotification(`${data.playerName} joined the game`);
+                this.handlePlayerJoined(data);
                 break;
                 
             case 'player_left':
-                this.app.uiManager.showNotification(`${data.playerName} left the game`);
+                this.handlePlayerLeft(data);
+                break;
+                
+            case 'bingo_called':
+                this.handleBingoCalled(data);
                 break;
         }
     }
     
-    handleGameState(data) {
-        // Update game state from server
-        if (data.state === 'card_selection' && this.app.gameState !== 'card_selection') {
-            this.app.startCardSelection();
-        } else if (data.state === 'playing' && this.app.gameState === 'card_selection') {
-            this.app.uiManager.showGameScreen();
+    // Handle number drawn event
+    handleNumberDrawn(data) {
+        const { number, letter } = data;
+        
+        // Update UI with new number
+        this.emit('ui:number_drawn', { number, letter });
+        
+        // Check if any player has bingo
+        this.send('check_bingo', { number });
+    }
+    
+    // Handle game started event
+    handleGameStarted(data) {
+        const { gameId, players, settings } = data;
+        
+        // Update UI
+        this.emit('ui:game_started', { gameId, players, settings });
+    }
+    
+    // Handle game ended event
+    handleGameEnded(data) {
+        const { winner, winningCard, numbersCalled } = data;
+        
+        // Update UI
+        this.emit('ui:game_ended', { winner, winningCard, numbersCalled });
+    }
+    
+    // Handle player joined event
+    handlePlayerJoined(data) {
+        const { player, totalPlayers } = data;
+        
+        // Update UI
+        this.emit('ui:player_joined', { player, totalPlayers });
+    }
+    
+    // Handle player left event
+    handlePlayerLeft(data) {
+        const { player, totalPlayers } = data;
+        
+        // Update UI
+        this.emit('ui:player_left', { player, totalPlayers });
+    }
+    
+    // Handle bingo called event
+    handleBingoCalled(data) {
+        const { player, cardNumber, pattern } = data;
+        
+        // Update UI
+        this.emit('ui:bingo_called', { player, cardNumber, pattern });
+    }
+    
+    // Attempt to reconnect
+    attemptReconnect() {
+        if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+            console.log('Max reconnection attempts reached');
+            this.emit('reconnection_failed');
+            return;
+        }
+        
+        this.reconnectAttempts++;
+        const delay = this.reconnectDelay * Math.pow(1.5, this.reconnectAttempts - 1);
+        
+        console.log(`Attempting reconnection in ${delay}ms (attempt ${this.reconnectAttempts})`);
+        
+        setTimeout(() => {
+            if (!this.isConnected) {
+                this.connect().catch(error => {
+                    console.error('Reconnection attempt failed:', error);
+                });
+            }
+        }, delay);
+    }
+    
+    // Add event listener
+    on(event, callback) {
+        if (!this.eventListeners.has(event)) {
+            this.eventListeners.set(event, []);
+        }
+        this.eventListeners.get(event).push(callback);
+    }
+    
+    // Remove event listener
+    off(event, callback) {
+        if (this.eventListeners.has(event)) {
+            const listeners = this.eventListeners.get(event);
+            const index = listeners.indexOf(callback);
+            if (index > -1) {
+                listeners.splice(index, 1);
+            }
         }
     }
     
-    handleCardSelectionResult(data) {
-        if (data.success) {
-            this.app.uiManager.showNotification('Cards confirmed! Waiting for other players...');
-        } else {
-            this.app.uiManager.showNotification(data.message, 'error');
+    // Emit event to listeners
+    emit(event, data) {
+        if (this.eventListeners.has(event)) {
+            this.eventListeners.get(event).forEach(callback => {
+                try {
+                    callback(data);
+                } catch (error) {
+                    console.error(`Error in event listener for ${event}:`, error);
+                }
+            });
         }
     }
     
-    disconnect() {
-        if (this.socket) {
-            this.socket.close();
-        }
+    // Join a game room
+    joinGame(gameId, playerData) {
+        this.send('join_game', {
+            gameId,
+            player: playerData
+        });
+    }
+    
+    // Leave a game room
+    leaveGame(gameId) {
+        this.send('leave_game', { gameId });
+    }
+    
+    // Call bingo
+    callBingo(gameId, cardNumber, pattern) {
+        this.send('call_bingo', {
+            gameId,
+            cardNumber,
+            pattern
+        });
+    }
+    
+    // Get connection status
+    getStatus() {
+        return {
+            isConnected: this.isConnected,
+            reconnectAttempts: this.reconnectAttempts,
+            pendingMessages: this.pendingMessages.length
+        };
+    }
+    
+    // Clean up
+    destroy() {
+        this.disconnect();
+        this.eventListeners.clear();
+        this.pendingMessages = [];
     }
 }
