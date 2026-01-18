@@ -1,450 +1,411 @@
+// UI Manager - Handles all UI updates and interactions
 import { CONFIG } from './config.js';
 
 export class UIManager {
-    constructor(app) {
-        this.app = app;
-        this.currentScreen = 'cardSelection';
+    constructor() {
+        this.elements = {};
+        this.selectedCards = new Set();
+        this.isModalVisible = false;
     }
     
+    // Initialize UI
     init() {
         this.cacheElements();
-        this.bindEvents();
-        this.loadComponents();
+        this.setupEventListeners();
+        this.applyTheme();
     }
     
+    // Cache DOM elements
     cacheElements() {
-        // Screens
-        this.screens = {
-            cardSelection: document.getElementById('cardSelectionScreen'),
-            game: document.getElementById('gameScreen'),
-            winner: document.getElementById('winnerScreen')
+        this.elements = {
+            cardsGrid: document.getElementById('cardsGrid'),
+            cardContent: document.getElementById('cardContent'),
+            selectedCount: document.getElementById('selectedCount'),
+            totalCards: document.getElementById('totalCards'),
+            activeCards: document.getElementById('activeCards'),
+            numbersCalled: document.getElementById('numbersCalled'),
+            cardSearch: document.getElementById('cardSearch'),
+            clearSearch: document.getElementById('clearSearch'),
+            cardSelectionSection: document.getElementById('cardSelectionSection'),
+            gameBoardSection: document.getElementById('gameBoardSection'),
+            cardPreviewModal: document.getElementById('cardPreviewModal'),
+            previewCardNumber: document.getElementById('previewCardNumber'),
+            cardPreviewContent: document.getElementById('cardPreviewContent'),
+            userInfo: document.getElementById('userInfo')
         };
-        
-        // Buttons
-        this.confirmBtn = document.getElementById('confirmSelection');
-        this.bingoBtn = document.getElementById('bingoBtn');
-        this.autoMarkBtn = document.getElementById('autoMarkBtn');
-        
-        // Info displays
-        this.playersCount = document.getElementById('playersCount');
-        this.gameTimer = document.getElementById('gameTimer');
-        this.selectionTimer = document.getElementById('selectionTimer');
-        this.lastNumber = document.getElementById('lastNumber');
-        this.maxCards = document.getElementById('maxCards');
-        
-        // Containers
-        this.cardsContainer = document.getElementById('cardsContainer');
-        this.playerCardsContainer = document.getElementById('playerCardsContainer');
-        this.numberGridContainer = document.getElementById('numberGridContainer');
     }
     
-    bindEvents() {
-        if (this.confirmBtn) {
-            this.confirmBtn.addEventListener('click', () => {
-                this.app.confirmCardSelection();
-            });
-        }
+    // Generate card grid (1-400)
+    generateCardGrid(totalCards, availableCards, onCardClick, onCardPreview) {
+        this.elements.cardsGrid.innerHTML = '';
         
-        if (this.bingoBtn) {
-            this.bingoBtn.addEventListener('click', () => {
-                this.app.declareBingo();
+        for (let i = 1; i <= totalCards; i++) {
+            const cardElement = this.createCardElement(i, availableCards.has(i));
+            cardElement.addEventListener('click', () => onCardClick(i));
+            cardElement.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                onCardPreview(i);
             });
-        }
-        
-        if (this.autoMarkBtn) {
-            this.autoMarkBtn.addEventListener('click', () => {
-                this.app.gameEngine.toggleAutoMark();
-            });
-        }
-    }
-    
-    async loadComponents() {
-        try {
-            // Load mobile navigation
-            const navResponse = await fetch('components/mobile-nav.html');
-            const navHTML = await navResponse.text();
-            document.getElementById('mobileNavContainer').innerHTML = navHTML;
             
-            // Load winner modal
-            const modalResponse = await fetch('components/winner-modal.html');
-            const modalHTML = await modalResponse.text();
-            document.getElementById('winnerModalContainer').innerHTML = modalHTML;
-            
-            this.bindComponentEvents();
-            
-        } catch (error) {
-            console.error('Failed to load components:', error);
-            this.createFallbackComponents();
+            this.elements.cardsGrid.appendChild(cardElement);
         }
     }
     
-    bindComponentEvents() {
-        // Mobile navigation events
-        document.querySelectorAll('.nav-item').forEach(item => {
-            item.addEventListener('click', () => {
-                const screen = item.dataset.screen;
-                this.showScreen(screen);
-            });
-        });
+    // Create individual card element
+    createCardElement(cardNumber, isAvailable) {
+        const cardDiv = document.createElement('div');
+        cardDiv.className = `card-number ${isAvailable ? 'available' : 'unavailable'}`;
+        cardDiv.textContent = cardNumber;
+        cardDiv.dataset.cardNumber = cardNumber;
+        cardDiv.title = `Card ${cardNumber} - ${isAvailable ? 'Click to select' : 'Unavailable'}`;
         
-        // Modal close button
-        const closeBtn = document.querySelector('.modal-close');
-        if (closeBtn) {
-            closeBtn.addEventListener('click', () => {
-                this.hideModal();
-            });
-        }
-    }
-    
-    createFallbackComponents() {
-        // Create fallback mobile navigation
-        const navHTML = `
-            <nav class="mobile-nav">
-                <div class="nav-item active" data-screen="cardSelection">
-                    <span class="nav-icon">🎴</span>
-                    <span class="nav-label">Cards</span>
-                </div>
-                <div class="nav-item" data-screen="game">
-                    <span class="nav-icon">🎮</span>
-                    <span class="nav-label">Game</span>
-                </div>
-                <div class="nav-item" data-screen="stats">
-                    <span class="nav-icon">📊</span>
-                    <span class="nav-label">Stats</span>
-                </div>
-            </nav>
-        `;
-        
-        document.getElementById('mobileNavContainer').innerHTML = navHTML;
-        this.bindComponentEvents();
-    }
-    
-    showScreen(screenName) {
-        // Hide all screens
-        Object.values(this.screens).forEach(screen => {
-            if (screen) screen.classList.remove('active');
-        });
-        
-        // Show requested screen
-        if (this.screens[screenName]) {
-            this.screens[screenName].classList.add('active');
-            this.currentScreen = screenName;
+        // Add tooltip for preview
+        if (isAvailable) {
+            cardDiv.title += '\nRight-click to preview';
         }
         
-        // Update navigation
-        document.querySelectorAll('.nav-item').forEach(item => {
-            item.classList.toggle('active', item.dataset.screen === screenName);
-        });
+        return cardDiv;
     }
     
-    showCardSelectionScreen() {
-        this.showScreen('cardSelection');
-        this.maxCards.textContent = CONFIG.MAX_CARDS_PER_PLAYER;
-    }
-    
-    showGameScreen() {
-        this.showScreen('game');
-        this.generateNumberGrid();
-    }
-    
-    showWinnerScreen(winnerData) {
-        this.showScreen('winner');
+    // Update card selection state
+    updateCardSelection(cardNumber, isSelected) {
+        const cardElement = document.querySelector(`.card-number[data-card-number="${cardNumber}"]`);
         
-        // Update winner information
-        document.getElementById('winnerName').textContent = winnerData.name || 'Unknown Player';
-        document.getElementById('winningCard').textContent = winnerData.cardId || '#1';
-        document.getElementById('numbersCalled').textContent = winnerData.numbersCalled || 0;
-        
-        const duration = winnerData.duration || 0;
-        const minutes = Math.floor(duration / 60);
-        const seconds = duration % 60;
-        document.getElementById('gameDuration').textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-        
-        // Start restart countdown
-        this.startRestartCountdown();
-        
-        // Show confetti
-        this.showConfetti();
-    }
-    
-    startRestartCountdown() {
-        let timeLeft = CONFIG.AUTO_RESTART_DELAY / 1000;
-        const timerElement = document.getElementById('restartTimer');
-        
-        const countdown = setInterval(() => {
-            timeLeft--;
-            timerElement.textContent = timeLeft;
-            
-            if (timeLeft <= 0) {
-                clearInterval(countdown);
+        if (cardElement) {
+            if (isSelected) {
+                cardElement.classList.add('selected');
+                this.selectedCards.add(cardNumber);
+            } else {
+                cardElement.classList.remove('selected');
+                this.selectedCards.delete(cardNumber);
             }
-        }, 1000);
+        }
     }
     
-    showConfetti() {
-        const confettiContainer = document.createElement('div');
-        confettiContainer.className = 'confetti-container';
+    // Update card selection from Set
+    updateCardSelectionFromSet(selectedSet) {
+        // Clear all selections first
+        document.querySelectorAll('.card-number.selected').forEach(card => {
+            card.classList.remove('selected');
+        });
         
-        for (let i = 0; i < 9; i++) {
-            const confetti = document.createElement('div');
-            confetti.className = 'confetti';
-            confettiContainer.appendChild(confetti);
+        // Add new selections
+        selectedSet.forEach(cardNumber => {
+            this.updateCardSelection(cardNumber, true);
+        });
+    }
+    
+    // Clear all card selections
+    clearCardSelection() {
+        document.querySelectorAll('.card-number.selected').forEach(card => {
+            card.classList.remove('selected');
+        });
+        this.selectedCards.clear();
+    }
+    
+    // Update selection count
+    updateSelectionCount(count) {
+        this.elements.selectedCount.textContent = count;
+    }
+    
+    // Update game statistics
+    updateStats(stats) {
+        if (stats.totalCards !== undefined) {
+            this.elements.totalCards.textContent = stats.totalCards;
+        }
+        if (stats.availableCards !== undefined) {
+            this.elements.activeCards.textContent = stats.availableCards;
+        }
+        if (stats.selectedCards !== undefined) {
+            this.elements.selectedCount.textContent = stats.selectedCards;
+        }
+    }
+    
+    // Show card preview modal
+    showCardPreviewModal() {
+        this.elements.cardPreviewModal.style.display = 'flex';
+        this.isModalVisible = true;
+        document.body.style.overflow = 'hidden';
+    }
+    
+    // Hide card preview modal
+    hideCardPreviewModal() {
+        this.elements.cardPreviewModal.style.display = 'none';
+        this.isModalVisible = false;
+        document.body.style.overflow = '';
+    }
+    
+    // Show loading in card preview
+    showCardPreviewLoading(cardNumber) {
+        this.elements.previewCardNumber.textContent = cardNumber;
+        this.elements.cardPreviewContent.innerHTML = `
+            <div class="loading-spinner"></div>
+            <p class="loading-text">Loading card ${cardNumber}...</p>
+        `;
+    }
+    
+    // Display card preview
+    displayCardPreview(cardNumber, cardData) {
+        this.elements.previewCardNumber.textContent = cardNumber;
+        
+        if (!cardData || !cardData.numbers) {
+            this.elements.cardPreviewContent.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">❌</div>
+                    <h3>Card Not Available</h3>
+                    <p>This card is no longer available for selection.</p>
+                </div>
+            `;
+            return;
         }
         
-        document.body.appendChild(confettiContainer);
+        // Create BINGO card preview
+        const bingoCard = this.createBingoCardPreview(cardData);
         
-        // Remove confetti after animation
-        setTimeout(() => {
-            confettiContainer.remove();
-        }, 5000);
-    }
-    
-    displaySelectionCards(cards) {
-        if (!this.cardsContainer) return;
-        
-        this.cardsContainer.innerHTML = '';
-        
-        cards.forEach(card => {
-            const cardElement = this.createCardElement(card);
-            this.cardsContainer.appendChild(cardElement);
-        });
-    }
-    
-    createCardElement(card) {
-        const div = document.createElement('div');
-        div.className = `bingo-card-selection ${card.selected ? 'selected' : ''}`;
-        div.dataset.cardId = card.id;
-        
-        div.innerHTML = `
-            <div class="card-header">
-                <span class="card-id">${card.id}</span>
-                <span class="card-status">${card.selected ? 'Selected' : 'Available'}</span>
-            </div>
-            <div class="card-numbers">
-                ${this.generateCardNumbersHTML(card.numbers)}
+        this.elements.cardPreviewContent.innerHTML = `
+            <div class="card-preview fade-in">
+                <div class="card-header">
+                    <div class="card-title">Card #${cardNumber}</div>
+                    <div class="card-status ${cardData.isAvailable ? 'status-available' : 'status-unavailable'}">
+                        ${cardData.isAvailable ? 'Available' : 'Unavailable'}
+                    </div>
+                </div>
+                ${bingoCard}
+                <div class="card-info">
+                    <p><strong>Pattern:</strong> ${cardData.pattern}</p>
+                    <p><strong>Generated:</strong> ${new Date(cardData.createdAt).toLocaleDateString()}</p>
+                </div>
             </div>
         `;
-        
-        div.addEventListener('click', () => {
-            this.app.cardManager.toggleCardSelection(card.id);
-        });
-        
-        return div;
     }
     
-    generateCardNumbersHTML(numbers) {
-        let html = '';
+    // Create BINGO card preview HTML
+    createBingoCardPreview(cardData) {
+        // Sort numbers by row and column
+        const sortedNumbers = cardData.numbers.sort((a, b) => {
+            if (a.row === b.row) return a.column - b.column;
+            return a.row - b.row;
+        });
+        
+        // Create header row (B I N G O)
+        let html = '<div class="bingo-header">';
+        ['B', 'I', 'N', 'G', 'O'].forEach(letter => {
+            html += `<div class="bingo-letter">${letter}</div>`;
+        });
+        html += '</div>';
+        
+        // Create 5x5 grid
+        html += '<div class="bingo-card">';
+        
         for (let row = 0; row < 5; row++) {
             for (let col = 0; col < 5; col++) {
-                const number = numbers[row][col];
-                const isFree = row === 2 && col === 2;
+                const numberData = sortedNumbers.find(n => n.row === row && n.column === col);
                 
-                html += `
-                    <div class="card-number ${isFree ? 'free' : ''}">
-                        ${isFree ? 'FREE' : number}
-                    </div>
-                `;
+                if (numberData) {
+                    const cellClass = numberData.isFreeSpace ? 'bingo-cell free' : 'bingo-cell';
+                    const cellContent = numberData.isFreeSpace ? 'FREE' : numberData.number;
+                    
+                    html += `<div class="${cellClass}">${cellContent}</div>`;
+                }
             }
         }
+        
+        html += '</div>';
         return html;
     }
     
-    updateCardSelection(selectedIds, availableCards) {
-        // Update card selection state
-        document.querySelectorAll('.bingo-card-selection').forEach(cardElement => {
-            const cardId = cardElement.dataset.cardId;
-            const isSelected = selectedIds.includes(cardId);
-            
-            cardElement.classList.toggle('selected', isSelected);
-            
-            const statusElement = cardElement.querySelector('.card-status');
-            if (statusElement) {
-                statusElement.textContent = isSelected ? 'Selected' : 'Available';
-            }
-        });
+    // Show game board
+    showGameBoard() {
+        this.elements.cardSelectionSection.style.display = 'none';
+        this.elements.gameBoardSection.style.display = 'block';
         
-        // Update confirm button
-        if (this.confirmBtn) {
-            this.confirmBtn.disabled = selectedIds.length === 0;
-            this.confirmBtn.textContent = `Confirm Selection (${selectedIds.length}/${CONFIG.MAX_CARDS_PER_PLAYER})`;
-        }
+        // Load game board component
+        this.loadComponent('components/game-board.html', this.elements.gameBoardSection)
+            .then(() => {
+                // Initialize game board UI
+                this.initializeGameBoard();
+            });
     }
     
-    displayPlayerCards(cards) {
-        if (!this.playerCardsContainer) return;
-        
-        this.playerCardsContainer.innerHTML = '';
-        
-        cards.forEach((card, index) => {
-            const cardElement = this.createPlayerCardElement(card, index);
-            this.playerCardsContainer.appendChild(cardElement);
-        });
+    // Hide game board
+    hideGameBoard() {
+        this.elements.cardSelectionSection.style.display = 'block';
+        this.elements.gameBoardSection.style.display = 'none';
     }
     
-    createPlayerCardElement(card, index) {
-        const div = document.createElement('div');
-        div.className = 'player-card';
-        div.dataset.cardId = card.id;
+    // Initialize game board UI
+    initializeGameBoard() {
+        // This would be called after loading the game board component
+        // Implementation depends on game board structure
+    }
+    
+    // Update user info from Telegram
+    updateUserInfo(userData) {
+        if (!userData || !this.elements.userInfo) return;
         
-        div.innerHTML = `
-            <div class="player-card-header">
-                <span class="card-id">${card.id}</span>
-                <span class="card-number">Card ${index + 1}</span>
+        const { first_name, last_name, username } = userData;
+        const displayName = first_name || username || 'Player';
+        
+        this.elements.userInfo.innerHTML = `
+            <div class="user-avatar">
+                ${displayName.charAt(0).toUpperCase()}
             </div>
-            <div class="player-card-numbers" id="player-card-${card.id}">
-                ${this.generateCardNumbersHTML(card.numbers)}
-            </div>
+            <span class="user-name">${displayName}</span>
         `;
+    }
+    
+    // Show toast notification
+    showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type} fade-in-up`;
+        toast.textContent = message;
         
-        return div;
-    }
-    
-    markNumberOnCard(cardId, row, col) {
-        const cardElement = document.querySelector(`.player-card[data-card-id="${cardId}"]`);
-        if (!cardElement) return;
+        document.body.appendChild(toast);
         
-        const numbers = cardElement.querySelectorAll('.card-number');
-        const index = row * 5 + col;
-        
-        if (numbers[index]) {
-            numbers[index].classList.add('marked', 'number-reveal');
-            
-            // Remove animation class after animation completes
-            setTimeout(() => {
-                numbers[index].classList.remove('number-reveal');
-            }, 500);
-        }
-    }
-    
-    generateNumberGrid() {
-        if (!this.numberGridContainer) return;
-        
-        let html = '<div class="number-grid"><div class="grid-header">Called Numbers</div><div class="numbers-container">';
-        
-        for (let i = 1; i <= CONFIG.BINGO_NUMBERS; i++) {
-            html += `<div class="grid-number" data-number="${i}">${i}</div>`;
-        }
-        
-        html += '</div></div>';
-        this.numberGridContainer.innerHTML = html;
-    }
-    
-    updateLastNumber(number) {
-        this.lastNumber.textContent = number;
-        
-        // Highlight the number in the grid
-        const numberElement = document.querySelector(`.grid-number[data-number="${number}"]`);
-        if (numberElement) {
-            numberElement.classList.add('called', 'recent');
-            
-            // Remove recent class after animation
-            setTimeout(() => {
-                numberElement.classList.remove('recent');
-            }, 1000);
-        }
-    }
-    
-    updatePlayersCount(count) {
-        this.playersCount.textContent = count;
-    }
-    
-    updateSelectionTimer(seconds) {
-        this.selectionTimer.textContent = seconds;
-    }
-    
-    updateGameTimer(minutes, seconds) {
-        this.gameTimer.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-    }
-    
-    showBingoButton(show) {
-        if (this.bingoBtn) {
-            this.bingoBtn.disabled = !show;
-        }
-    }
-    
-    highlightBingoButton() {
-        if (this.bingoBtn) {
-            this.bingoBtn.classList.add('pulse', 'glow');
-        }
-    }
-    
-    updateAutoMarkButton(enabled) {
-        if (this.autoMarkBtn) {
-            this.autoMarkBtn.textContent = `Auto-Mark: ${enabled ? 'ON' : 'OFF'}`;
-        }
-    }
-    
-    updatePlayerInfo(user) {
-        // Could update player name/avatar in the UI
-        console.log('User info:', user);
-    }
-    
-    showNotification(message, type = 'info') {
-        // Create notification element
-        const notification = document.createElement('div');
-        notification.className = `notification notification-${type}`;
-        notification.textContent = message;
-        
-        // Add to DOM
-        notification.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: ${type === 'error' ? '#f44336' : type === 'warning' ? '#ff9800' : '#4CAF50'};
-            color: white;
-            padding: 12px 24px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-            z-index: 10000;
-            animation: slideUp 0.3s ease;
-        `;
-        
-        document.body.appendChild(notification);
-        
-        // Remove after 3 seconds
+        // Remove toast after 3 seconds
         setTimeout(() => {
-            notification.style.animation = 'fadeOut 0.3s ease';
+            toast.classList.add('fade-out');
             setTimeout(() => {
-                notification.remove();
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
             }, 300);
         }, 3000);
     }
     
-    showConfirmationModal(title, message, onConfirm) {
-        const modal = document.createElement('div');
-        modal.className = 'modal-overlay';
-        
-        modal.innerHTML = `
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3 class="modal-title">${title}</h3>
-                    <button class="modal-close">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <p>${message}</p>
-                </div>
-                <div class="modal-footer" style="display: flex; gap: 10px; margin-top: 20px;">
-                    <button id="modalCancel" class="btn btn-secondary" style="flex: 1;">Cancel</button>
-                    <button id="modalConfirm" class="btn btn-primary" style="flex: 1;">Confirm</button>
-                </div>
+    // Show error message
+    showError(message) {
+        this.showToast(message, 'error');
+    }
+    
+    // Show loading state
+    showLoading(message = 'Loading...') {
+        const loadingDiv = document.createElement('div');
+        loadingDiv.className = 'loading-overlay';
+        loadingDiv.innerHTML = `
+            <div class="loading-content">
+                <div class="loading-spinner"></div>
+                <p>${message}</p>
             </div>
         `;
         
-        document.body.appendChild(modal);
+        document.body.appendChild(loadingDiv);
+        return loadingDiv;
+    }
+    
+    // Hide loading state
+    hideLoading(loadingDiv) {
+        if (loadingDiv && loadingDiv.parentNode) {
+            loadingDiv.parentNode.removeChild(loadingDiv);
+        }
+    }
+    
+    // Filter cards based on search term
+    filterCards(searchTerm) {
+        const cards = document.querySelectorAll('.card-number');
+        const term = searchTerm.toLowerCase();
         
-        // Add event listeners
-        modal.querySelector('.modal-close').addEventListener('click', () => modal.remove());
-        modal.querySelector('#modalCancel').addEventListener('click', () => modal.remove());
-        modal.querySelector('#modalConfirm').addEventListener('click', () => {
-            onConfirm();
-            modal.remove();
+        cards.forEach(card => {
+            const cardNumber = card.dataset.cardNumber;
+            const isVisible = term === '' || cardNumber.includes(term);
+            card.style.display = isVisible ? '' : 'none';
         });
     }
     
-    hideModal() {
-        const modal = document.querySelector('.modal-overlay');
-        if (modal) {
-            modal.remove();
+    // Set theme
+    setTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        
+        // Update Telegram theme if available
+        if (window.Telegram?.WebApp) {
+            window.Telegram.WebApp.setHeaderColor(theme === 'dark' ? '#17212b' : '#ffffff');
+            window.Telegram.WebApp.setBackgroundColor(theme === 'dark' ? '#17212b' : '#ffffff');
         }
+    }
+    
+    // Apply theme from system preference
+    applyTheme() {
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const savedTheme = localStorage.getItem('theme') || CONFIG.DEFAULT_THEME;
+        
+        let theme = savedTheme;
+        if (theme === 'system') {
+            theme = prefersDark ? 'dark' : 'light';
+        }
+        
+        this.setTheme(theme);
+    }
+    
+    // Update online status indicator
+    updateOnlineStatus(isOnline) {
+        const statusIndicator = document.getElementById('onlineStatus') || 
+                               this.createOnlineStatusIndicator();
+        
+        statusIndicator.className = `online-status ${isOnline ? 'online' : 'offline'}`;
+        statusIndicator.title = isOnline ? 'Online' : 'Offline';
+    }
+    
+    // Create online status indicator
+    createOnlineStatusIndicator() {
+        const statusDiv = document.createElement('div');
+        statusDiv.id = 'onlineStatus';
+        statusDiv.className = 'online-status online';
+        
+        const headerContent = document.querySelector('.header-content');
+        if (headerContent) {
+            headerContent.appendChild(statusDiv);
+        }
+        
+        return statusDiv;
+    }
+    
+    // Load HTML component
+    async loadComponent(url, container) {
+        try {
+            const response = await fetch(url);
+            const html = await response.text();
+            container.innerHTML = html;
+        } catch (error) {
+            console.error(`Failed to load component ${url}:`, error);
+            container.innerHTML = `<p class="error">Failed to load component</p>`;
+        }
+    }
+    
+    // Check if modal is visible
+    isModalVisible() {
+        return this.isModalVisible;
+    }
+    
+    // Setup event listeners
+    setupEventListeners() {
+        // Debounced search
+        let searchTimeout;
+        this.elements.cardSearch.addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                this.filterCards(e.target.value);
+            }, CONFIG.DEBOUNCE_DELAY);
+        });
+        
+        // Clear search button
+        this.elements.clearSearch.addEventListener('click', () => {
+            this.elements.cardSearch.value = '';
+            this.filterCards('');
+            this.elements.cardSearch.focus();
+        });
+        
+        // Modal close on overlay click
+        this.elements.cardPreviewModal.addEventListener('click', (e) => {
+            if (e.target === this.elements.cardPreviewModal) {
+                this.hideCardPreviewModal();
+            }
+        });
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.isModalVisible) {
+                this.hideCardPreviewModal();
+            }
+        });
     }
 }
